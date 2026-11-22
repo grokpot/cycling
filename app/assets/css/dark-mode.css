@@ -1,56 +1,118 @@
 /** Dark mode overrides for Nuxt UI components */
 
 /* Force dark mode globally */
-html {
+html, body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   color-scheme: dark;
 }
 
+/* Page backgrounds */
+.page, [class*="Page"], main {
+  background-color: var(--bg-primary);
+}
+
 /* Card components - dark surface */
-[class*="Card"] {
+.card,
+[class*="UCard"],
+[data-ui="card"] {
   background-color: var(--bg-surface) !important;
-  border-color: var(--border) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-primary) !important;
+}
+
+.card:hover,
+[class*="UCard"]:hover,
+[data-ui="card"]:hover {
+  background-color: var(--bg-surface-hover) !important;
 }
 
 /* Button variants for dark mode */
-button[class*="soft"],
-button[class*="ghost"] {
-  background-color: rgba(255, 255, 255, 0.05) !important;
+button {
+  cursor: pointer;
+}
+
+button[data-variant="soft"],
+button[data-variant="ghost"] {
+  background-color: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+button[data-variant="soft"]:hover,
+button[data-variant="ghost"]:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Page headers and titles */
+h1, h2, h3, h4, h5, h6,
+.text-h1, .text-h2, .text-h3 {
   color: var(--text-primary) !important;
 }
 
-button[class*="soft"]:hover,
-button[class*="ghost"]:hover {
-  background-color: rgba(255, 255, 255, 0.1) !important;
+/* Navbar */
+nav,
+[data-ui="navbar"],
+[class*="Navbar"] {
+  background-color: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
 }
 
-/* Page headers */
-h1, h2, h3, h4, h5, h6 {
-  color: var(--text-primary) !important;
-}
-
-/* Navbar title */
 nav h1,
-nav[class*="Navbar"] h1,
-[class*="DashboardNavbar"] h1 {
+[data-ui="navbar"] h1,
+[class*="Navbar"] h1,
+[class*="Navbar"] [class*="title"] {
   color: var(--text-primary) !important;
 }
 
-/* Sidebar active item */
-[class*="NavigationLink"][class*="active"],
-[class*="SidebarLink"][class*="active"] {
+/* Sidebar */
+aside,
+[data-ui="sidebar"] {
+  background-color: var(--bg-surface);
+  border-right: 1px solid var(--border);
+}
+
+/* Sidebar link active state */
+[data-ui="sidebar"] a[data-active="true"],
+[data-ui="navigation-link"][data-active="true"] {
   background-color: rgba(255, 255, 255, 0.08) !important;
   color: var(--text-primary) !important;
 }
 
-/* Card hover states */
-[class*="Card"]:hover {
-  background-color: var(--bg-surface-hover) !important;
+/* Alerts */
+[data-ui="alert"] {
+  background-color: var(--bg-surface);
+  border-color: var(--border);
+}
+
+/* Form fields */
+input, textarea, select {
+  background-color: var(--bg-surface);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+input:focus, textarea:focus, select:focus {
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+/* Empty state */
+[data-ui="empty"],
+[class*="Empty"] {
+  color: var(--text-secondary);
+}
+
+/* File upload */
+[data-ui="file-upload"] {
+  background-color: var(--bg-surface);
+  border-color: var(--border);
 }
 
 /* Global cursor pointer for interactive elements */
 button,
 a[href],
 [role="button"],
-.cursor-pointer {
+.cursor-pointer,
+[class*="clickable"] {
   cursor: pointer !important;
 }
