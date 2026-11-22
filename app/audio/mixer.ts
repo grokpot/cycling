@@ -1,7 +1,7 @@
 /** Real audio mixer with pitch-preserving time stretch and crossfades. */
 
 import type { Cue, Song } from '#shared/types'
-import { TimeStretcher } from './time-stretch'
+import { SoundTouchStretcher } from './soundtouch-stretch'
 
 interface ScheduledCue {
   cue: Cue
@@ -12,7 +12,7 @@ interface ScheduledCue {
 
 export class AudioMixer {
   private ctx: AudioContext | null = null
-  private stretcher: TimeStretcher | null = null
+  private stretcher: SoundTouchStretcher | null = null
   private masterGain: GainNode | null = null
   private audioBuffers: Map<string, AudioBuffer> = new Map()
   private scheduledCues: ScheduledCue[] = []
@@ -26,7 +26,7 @@ export class AudioMixer {
         this.ctx = new AudioContext()
         console.info(`AudioContext created: sampleRate=${this.ctx.sampleRate}, state=${this.ctx.state}`)
         
-        this.stretcher = new TimeStretcher(this.ctx)
+        this.stretcher = new SoundTouchStretcher(this.ctx)
         this.masterGain = this.ctx.createGain()
         this.masterGain.connect(this.ctx.destination)
         this.masterGain.gain.value = 0.8
