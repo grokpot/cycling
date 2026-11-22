@@ -76,6 +76,22 @@ const bars = computed((): Bar[] => {
 })
 
 const maxHeight = 200
+
+const usedZones = computed(() => {
+  const zones = new Set<string>()
+  for (const bar of bars.value) {
+    const ftpPct = ftpPercentForInterval(
+      props.workout.intervals.find(i => i.id === bar.id)!,
+      props.profile
+    ) ?? 70
+    if (ftpPct >= 95) zones.add('vo2max')
+    else if (ftpPct >= 85) zones.add('threshold')
+    else if (ftpPct >= 75) zones.add('tempo')
+    else if (ftpPct >= 60) zones.add('endurance')
+    else zones.add('recovery')
+  }
+  return zones
+})
 </script>
 
 <template>
@@ -125,13 +141,14 @@ const maxHeight = 200
             <!-- Cadence label on bar -->
             <div 
               v-if="bar.cadence"
-              class="absolute left-1/2 -translate-x-1/2 text-xs font-medium text-white drop-shadow-sm"
+              class="absolute left-1/2 -translate-x-1/2 text-xs font-medium drop-shadow-sm whitespace-nowrap"
               :style="{ 
                 top: bar.heightPercent > 25 ? '8px' : '-20px',
-                color: bar.heightPercent > 25 ? 'white' : 'var(--ui-text-dimmed)'
+                color: bar.heightPercent > 25 ? 'rgba(255, 255, 255, 0.95)' : 'var(--ui-text-highlighted)',
+                fontSize: bar.widthPercent < 8 ? '10px' : '12px'
               }"
             >
-              {{ bar.cadence }} RPM
+              {{ bar.widthPercent < 8 ? bar.cadence : `${bar.cadence} RPM` }}
             </div>
             
             <!-- Power label on bar (only show if height > 20%) -->
@@ -158,25 +175,25 @@ const maxHeight = 200
       </div>
     </div>
     
-    <!-- Legend -->
+    <!-- Legend (only show zones present in workout) -->
     <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted justify-center">
-      <div class="flex items-center gap-1.5">
+      <div v-if="usedZones.has('recovery')" class="flex items-center gap-1.5">
         <div class="w-3 h-3 rounded bg-blue-500" />
         <span>Recovery</span>
       </div>
-      <div class="flex items-center gap-1.5">
+      <div v-if="usedZones.has('endurance')" class="flex items-center gap-1.5">
         <div class="w-3 h-3 rounded bg-green-500" />
         <span>Endurance</span>
       </div>
-      <div class="flex items-center gap-1.5">
+      <div v-if="usedZones.has('tempo')" class="flex items-center gap-1.5">
         <div class="w-3 h-3 rounded bg-yellow-500" />
         <span>Tempo</span>
       </div>
-      <div class="flex items-center gap-1.5">
+      <div v-if="usedZones.has('threshold')" class="flex items-center gap-1.5">
         <div class="w-3 h-3 rounded bg-orange-500" />
         <span>Threshold</span>
       </div>
-      <div class="flex items-center gap-1.5">
+      <div v-if="usedZones.has('vo2max')" class="flex items-center gap-1.5">
         <div class="w-3 h-3 rounded bg-red-500" />
         <span>VO2 Max</span>
       </div>

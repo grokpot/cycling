@@ -2,7 +2,10 @@
 
 import type { PowerKind } from './types'
 
-export function formatDuration(seconds: number): string {
+export function formatDuration(seconds: number | null | undefined): string {
+  if (seconds === null || seconds === undefined || !Number.isFinite(seconds)) {
+    return '--:--'
+  }
   const total = Math.max(0, Math.round(seconds))
   const minutes = Math.floor(total / 60)
   const remain = total % 60
