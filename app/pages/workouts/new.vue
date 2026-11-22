@@ -5,7 +5,8 @@ import {
   formatPower,
   powerValueLabel,
 } from '#shared/format'
-import type { PowerKind, Workout, WorkoutInterval } from '#shared/types'
+import type { PowerKind, Workout, WorkoutInterval, Song } from '#shared/types'
+import { planRide } from '#shared/planner'
 import { useWorkoutStore } from '~/repositories/workout-store'
 
 definePageMeta({ layout: 'default' })
@@ -17,6 +18,10 @@ const toast = useToast()
 const name = ref('New workout')
 const intervals = ref<WorkoutInterval[]>([])
 const profile = ref<any>(null)
+const songs = ref<Song[]>([])
+const plannedSongs = ref<Record<string, string | null>>({})
+const showSongPicker = ref(false)
+const selectedIntervalId = ref<string | null>(null)
 
 const demoProfile = {
   ftp: 250,
@@ -25,7 +30,12 @@ const demoProfile = {
 
 onMounted(async () => {
   profile.value = await store.getProfile() || demoProfile
+  songs.value = await store.listSongs()
 })
+
+watch(intervals, () => {
+  replanMusic()
+}, { deep: true })
 
 const powerKinds = [
   { label: '% FTP', value: 'ftp_percent' },
@@ -139,6 +149,78 @@ function stepTitle(step: WorkoutInterval): string {
 function shapeLabel(step: WorkoutInterval): string {
   return step.shape === 'ramp' ? 'Ramp' : 'Steady'
 }
+
+function replanMusic() {
+  if (!profile.value || intervals.value.length === 0 || songs.value.length === 0) {
+    return
+  }
+  const tempWorkout: Workout = {
+    id: 'preview',
+    name: name.value,
+    source: 'builder',
+    createdAt: '',
+    intervals: intervals.value.map((interval, index) => ({
+      ...interval,
+      position: index,
+    })),
+  }
+  const result = planRide(tempWorkout, profile.value, songs.value, {
+    intensityScale: 100,
+    dropsEnabled: false,
+  })
+  
+  const songMap: Record<string, string | null> = {}
+  for (const cue of result.cues) {
+    if (cue.songId && !songMap[cue.intervalId]) {
+      songMap[cue.intervalId] = cue.songId
+    }
+  }
+  plannedSongs.value = songMap
+}
+
+function getPlannedSong(intervalId: string): Song | null {
+  const songId = plannedSongs.value[intervalId]
+  if (!songId) return null
+  return songs.value.find(s => s.id === songId) || null
+}
+
+function openSongPicker(intervalId: string) {
+  selectedIntervalId.value = intervalId
+  showSongPicker.value = true
+}
+
+function selectSong(songId: string | null) {
+  if (!selectedIntervalId.value) return
+  const interval = intervals.value.find(i => i.id === selectedIntervalId.value)
+  if (interval) {
+    interval.songOverride = songId
+    replanMusic()
+  }
+  showSongPicker.value = false
+  selectedIntervalId.value = null
+}
+
+const sortedSongs = computed(() => {
+  if (!selectedIntervalId.value) return []
+  const interval = intervals.value.find(i => i.id === selectedIntervalId.value)
+  if (!interval) return songs.value
+  
+  const targetRpm = interval.cadenceLow || interval.cadenceHigh || profile.value?.preferredCadence || 80
+  
+  return [...songs.value]
+    .filter(s => s.analysis?.bpm)
+    .sort((a, b) => {
+      const aBpm = a.analysis!.bpm
+      const bBpm = b.analysis!.bpm
+      const aStretch1 = Math.abs((aBpm / targetRpm - 1) * 100)
+      const aStretch2 = Math.abs((aBpm / (targetRpm * 2) - 1) * 100)
+      const bStretch1 = Math.abs((bBpm / targetRpm - 1) * 100)
+      const bStretch2 = Math.abs((bBpm / (targetRpm * 2) - 1) * 100)
+      const aMin = Math.min(aStretch1, aStretch2)
+      const bMin = Math.min(bStretch1, bStretch2)
+      return aMin - bMin
+    })
+})
 
 async function save() {
   const workout: Workout = {
@@ -306,6 +388,30 @@ async function save() {
               @update:model-value="setRampCadence(step, $event ?? null)"
             />
           </UFormField>
+
+          <UFormField v-if="songs.length > 0" label="Music">
+            <div class="flex items-center gap-2">
+              <div class="flex-1 text-sm">
+                <span v-if="step.songOverride" class="text-primary">
+                  {{ songs.find(s => s.id === step.songOverride)?.name || 'Override' }} (override)
+                </span>
+                <span v-else-if="getPlannedSong(step.id)" class="text-secondary">
+                  {{ getPlannedSong(step.id)?.name }} (auto)
+                </span>
+                <span v-else class="text-muted">
+                  No song selected
+                </span>
+              </div>
+              <UButton
+                type="button"
+                size="sm"
+                variant="soft"
+                icon="i-lucide-music"
+                label="Swap"
+                @click="openSongPicker(step.id)"
+              />
+            </div>
+          </UFormField>
         </div>
       </UCard>
 
@@ -327,8 +433,39 @@ async function save() {
           Total duration: {{ formatDuration(intervals.reduce((s, i) => s + i.durationSeconds, 0)) }}
         </p>
       </div>
-    </UForm>
+      </UForm>
       </div>
     </div>
+
+    <!-- Song picker modal -->
+    <UModal v-model="showSongPicker" title="Select Song">
+      <div class="p-4 space-y-3">
+        <p class="text-sm text-muted">
+          Songs sorted by BPM closeness to target cadence
+        </p>
+        <div class="space-y-2">
+          <UButton
+            type="button"
+            block
+            variant="soft"
+            label="Auto (let planner choose)"
+            @click="selectSong(null)"
+          />
+          <UButton
+            v-for="song in sortedSongs.slice(0, 10)"
+            :key="song.id"
+            type="button"
+            block
+            variant="ghost"
+            @click="selectSong(song.id)"
+          >
+            <div class="flex justify-between w-full">
+              <span>{{ song.name }}</span>
+              <span class="text-xs text-muted">{{ song.analysis?.bpm }} BPM</span>
+            </div>
+          </UButton>
+        </div>
+      </div>
+    </UModal>
   </div>
 </template>

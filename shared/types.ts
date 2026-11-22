@@ -17,6 +17,7 @@ export interface WorkoutInterval {
   rampEndCadenceLow?: number | null
   rampEndCadenceHigh?: number | null
   cueText?: string
+  songOverride?: string | null
 }
 
 export interface Workout {
