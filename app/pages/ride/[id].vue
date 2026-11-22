@@ -208,12 +208,12 @@ watch(controlOpen, (open) => {
       <RideMetricCard
         title="Power"
         :value="`${ride.sample.value.watts} W`"
-        :caption="`Target: ${ride.targetWatts() ?? '—'} W`"
+        :caption="`Target: ${ride.targetWatts() || 0} W`"
       />
       <RideMetricCard
         title="Cadence"
         :value="`${ride.sample.value.cadence} RPM`"
-        :caption="`Target: ${ride.targetCadence()} RPM`"
+        :caption="`Target: ${ride.targetCadence() || 0} RPM`"
         :pulse="ride.beatPulse.value"
       />
       <RideMetricCard
@@ -245,8 +245,8 @@ watch(controlOpen, (open) => {
     <div class="controls">
       <UButton
         label="Skip"
-        variant="soft"
-        color="neutral"
+        variant="ghost"
+        size="sm"
         icon="i-lucide-skip-forward"
         @click="ride.skipInterval()"
       />
@@ -254,16 +254,15 @@ watch(controlOpen, (open) => {
         :icon="ride.paused.value ? 'i-lucide-play' : 'i-lucide-pause'"
         size="xl"
         variant="soft"
-        color="neutral"
         class="pause-button"
         :aria-label="ride.paused.value ? 'Resume' : 'Pause'"
         @click="ride.pauseRide()"
       />
       <UButton
-        label="Control"
-        variant="soft"
-        color="neutral"
-        icon="i-lucide-sliders-horizontal"
+        label="Settings"
+        variant="ghost"
+        size="sm"
+        icon="i-lucide-settings"
         @click="controlOpen = true"
       />
     </div>
