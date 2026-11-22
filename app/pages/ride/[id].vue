@@ -174,66 +174,56 @@ watch(controlOpen, (open) => {
 </script>
 
 <template>
-  <div v-if="workout && plan && profile" class="h-dvh flex flex-col p-4 max-w-4xl mx-auto overflow-hidden">
-    <header class="flex items-center justify-between gap-3 flex-shrink-0 mb-4">
+  <div v-if="workout && plan && profile" class="ride-screen">
+    <header class="ride-header">
       <UButton
         icon="i-lucide-arrow-left"
         variant="ghost"
-        color="neutral"
+        size="sm"
         aria-label="Leave ride"
         @click="leaveRide"
       />
-      <h1 class="text-lg font-semibold truncate flex-1 text-center">
+      <h1 class="ride-title">
         {{ workout.name }}
       </h1>
       <div class="flex gap-2">
         <UButton
           icon="i-lucide-bluetooth"
-          variant="soft"
+          variant="ghost"
+          size="sm"
           aria-label="Devices"
           @click="deviceOpen = true"
         />
         <UButton
           icon="i-lucide-settings"
-          variant="soft"
+          variant="ghost"
+          size="sm"
           aria-label="Control"
           @click="controlOpen = true"
         />
       </div>
     </header>
 
-    <div class="grid grid-cols-2 gap-3 flex-shrink-0">
+    <div class="metrics-grid">
       <RideMetricCard
         title="Power"
-        :value="ride.sample.value.watts"
+        :value="`${ride.sample.value.watts} W`"
         :caption="`Target: ${ride.targetWatts() ?? '—'} W`"
       />
       <RideMetricCard
         title="Cadence"
-        :value="ride.sample.value.cadence"
+        :value="`${ride.sample.value.cadence} RPM`"
         :caption="`Target: ${ride.targetCadence()} RPM`"
         :pulse="ride.beatPulse.value"
-      >
-        <UProgress
-          :model-value="ride.sample.value.cadence"
-          :max="ride.targetCadence() + 20"
-          :color="cadenceOver ? 'error' : 'neutral'"
-          class="mt-2"
-        />
-      </RideMetricCard>
-      <RideMetricCard
-        title="Heart rate"
-        :value="ride.sample.value.heartRate"
-        caption="Live BPM"
       />
-      <RideMetricCard 
-        title="Interval" 
-        :value="ride.formatMs(ride.remainingPieceMs())"
-        caption="Remaining"
+      <RideMetricCard
+        title="Heart Rate"
+        :value="`${ride.sample.value.heartRate} BPM`"
+        caption="Live"
       />
     </div>
 
-    <div class="flex-1 min-h-0 overflow-y-auto space-y-4 mt-4">
+    <div class="chart-container">
       <WorkoutEChartsGraph
         :workout="workout"
         :profile="profile"
@@ -244,15 +234,15 @@ watch(controlOpen, (open) => {
         interactive
         @seek="ride.seekTo"
       />
-
-      <RideIntervalBar
-        :piece-remaining="ride.formatMs(ride.remainingPieceMs())"
-        :line="intervalLine"
-        :song-title="songTitle"
-      />
     </div>
+
+    <RideIntervalBar
+      :piece-remaining="ride.formatMs(ride.remainingPieceMs())"
+      :line="intervalLine"
+      :song-title="songTitle"
+    />
     
-    <div class="flex items-center justify-between gap-4 pt-4 flex-shrink-0">
+    <div class="controls">
       <UButton
         label="Skip"
         variant="soft"
@@ -265,7 +255,7 @@ watch(controlOpen, (open) => {
         size="xl"
         variant="soft"
         color="neutral"
-        class="rounded-full"
+        class="pause-button"
         :aria-label="ride.paused.value ? 'Resume' : 'Pause'"
         @click="ride.pauseRide()"
       />
@@ -278,12 +268,13 @@ watch(controlOpen, (open) => {
       />
     </div>
 
-    <footer class="flex flex-col items-center gap-2 pt-3 flex-shrink-0 border-t border-hairline">
+    <footer class="ride-footer">
       <div class="flex items-center gap-2">
         <UBadge 
           v-if="ride.audioReady.value" 
           color="success" 
           variant="subtle"
+          size="xs"
         >
           Audio ready
         </UBadge>
@@ -291,6 +282,7 @@ watch(controlOpen, (open) => {
           v-else 
           color="neutral" 
           variant="subtle"
+          size="xs"
         >
           Loading audio...
         </UBadge>
@@ -298,12 +290,12 @@ watch(controlOpen, (open) => {
       <UButton
         label="Download .fit"
         variant="ghost"
-        size="sm"
+        size="xs"
         icon="i-lucide-download"
         @click="downloadFit"
       />
-      <p class="text-xs text-muted">
-        Space: pause · S: skip interval · C: control
+      <p class="keyboard-hints">
+        Space: pause · S: skip · C: control
       </p>
     </footer>
 
@@ -326,5 +318,110 @@ watch(controlOpen, (open) => {
       @connect-fan="connectFan"
     />
   </div>
-  <UEmpty v-else title="Ride not ready" class="p-8" />
+  <div v-else class="ride-screen">
+    <div class="empty-state">
+      <p>Ride not ready</p>
+    </div>
+  </div>
 </template>
+
+<style scoped>
+.ride-screen {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  padding: 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+.ride-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-shrink: 0;
+  margin-bottom: 1.5rem;
+}
+
+.ride-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  text-align: center;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-primary);
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  flex-shrink: 0;
+  margin-bottom: 1.5rem;
+}
+
+.chart-container {
+  flex: 1;
+  min-height: 0;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-shrink: 0;
+  padding: 1rem 0;
+}
+
+.pause-button {
+  min-width: 56px;
+  min-height: 56px;
+  border-radius: 9999px;
+}
+
+.ride-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+.keyboard-hints {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+  .ride-screen {
+    padding: 0.75rem;
+  }
+  
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+  
+  .metrics-grid > :nth-child(3) {
+    grid-column: 1 / -1;
+  }
+}
+</style>
