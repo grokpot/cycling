@@ -236,11 +236,28 @@ watch(controlOpen, (open) => {
       />
     </div>
 
-    <RideIntervalBar
-      :piece-remaining="ride.formatMs(ride.remainingPieceMs())"
-      :line="intervalLine"
-      :song-title="songTitle"
-    />
+    <div class="interval-info-container">
+      <RideIntervalBar
+        :piece-remaining="ride.formatMs(ride.remainingPieceMs())"
+        :line="intervalLine"
+        :song-title="songTitle"
+      />
+      
+      <!-- Next intervals preview -->
+      <div v-if="upcoming.length > 0" class="next-intervals">
+        <div class="next-intervals-header">Coming up</div>
+        <div class="next-intervals-list">
+          <div
+            v-for="(song, idx) in upcoming.slice(0, 3)"
+            :key="idx"
+            class="next-interval-item"
+          >
+            <div class="next-interval-number">{{ idx + 1 }}</div>
+            <div class="next-interval-song">{{ song }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
     
     <div class="controls">
       <UButton
@@ -268,34 +285,29 @@ watch(controlOpen, (open) => {
     </div>
 
     <footer class="ride-footer">
-      <div class="flex items-center gap-2">
-        <UBadge 
-          v-if="ride.audioReady.value" 
-          color="success" 
-          variant="subtle"
-          size="xs"
-        >
-          Audio ready
-        </UBadge>
-        <UBadge 
-          v-else 
-          color="neutral" 
-          variant="subtle"
-          size="xs"
-        >
-          Loading audio...
-        </UBadge>
+      <div class="flex items-center justify-between w-full">
+        <div class="flex items-center gap-2">
+          <UBadge 
+            v-if="ride.audioReady.value" 
+            color="success" 
+            variant="subtle"
+            size="xs"
+          >
+            Audio ready
+          </UBadge>
+          <UBadge 
+            v-else 
+            color="neutral" 
+            variant="subtle"
+            size="xs"
+          >
+            Loading audio...
+          </UBadge>
+        </div>
+        <p class="keyboard-hints text-center">
+          Space: pause · S: skip · C: control
+        </p>
       </div>
-      <UButton
-        label="Download .fit"
-        variant="ghost"
-        size="xs"
-        icon="i-lucide-download"
-        @click="downloadFit"
-      />
-      <p class="keyboard-hints">
-        Space: pause · S: skip · C: control
-      </p>
     </footer>
 
     <RideControlDrawer
@@ -384,6 +396,62 @@ watch(controlOpen, (open) => {
   min-width: 56px;
   min-height: 56px;
   border-radius: 9999px;
+}
+
+.interval-info-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.next-intervals {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.next-intervals-header {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.next-intervals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.next-interval-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+}
+
+.next-interval-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--bg-accented);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.next-interval-song {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .ride-footer {
