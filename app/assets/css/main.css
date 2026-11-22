@@ -1,2 +1,9 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
+
+/** Fix click blocking: icons inside buttons should not intercept pointer events */
+button .iconify,
+button svg,
+button > span {
+  pointer-events: none;
+}
