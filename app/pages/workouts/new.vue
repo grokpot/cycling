@@ -16,6 +16,16 @@ const toast = useToast()
 
 const name = ref('New workout')
 const intervals = ref<WorkoutInterval[]>([])
+const profile = ref<any>(null)
+
+const demoProfile = {
+  ftp: 250,
+  zones: []
+}
+
+onMounted(async () => {
+  profile.value = await store.getProfile() || demoProfile
+})
 
 const powerKinds = [
   { label: '% FTP', value: 'ftp_percent' },
@@ -148,8 +158,17 @@ async function save() {
 </script>
 
 <template>
-  <UDashboardNavbar title="Workout builder" />
-  <div class="p-4 max-w-2xl space-y-4">
+  <div class="flex flex-col h-screen">
+    <UDashboardNavbar title="Workout builder" />
+    <div class="flex-1 overflow-y-auto">
+      <div class="p-4 max-w-4xl mx-auto space-y-6 pb-24">
+    <!-- Live chart preview -->
+    <WorkoutEChartsGraph
+      v-if="intervals.length > 0 && profile"
+      :workout="{ id: 'preview', name: name, source: 'builder', createdAt: '', intervals }"
+      :profile="profile"
+    />
+    
     <UAlert
       color="info"
       variant="soft"
@@ -309,5 +328,7 @@ async function save() {
         </p>
       </div>
     </UForm>
+      </div>
+    </div>
   </div>
 </template>

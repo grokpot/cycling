@@ -102,11 +102,13 @@ async function loadDemoData() {
           <UCard
             v-for="w in workouts"
             :key="w.id"
-            class="cursor-pointer hover:bg-accented/5 transition-colors"
-            @click="router.push(`/workouts/${w.id}`)"
+            class="hover:bg-accented/5 transition-colors"
           >
             <div class="flex justify-between items-start gap-4">
-              <div class="flex-1 min-w-0">
+              <div 
+                class="flex-1 min-w-0 cursor-pointer"
+                @click="router.push(`/workouts/${w.id}`)"
+              >
                 <h3 class="text-h3 font-semibold truncate">
                   {{ w.name }}
                 </h3>
@@ -114,13 +116,25 @@ async function loadDemoData() {
                   {{ workoutMeta(w) }}
                 </p>
               </div>
-              <UButton
-                variant="ghost"
-                color="neutral"
-                icon="i-lucide-play"
-                aria-label="Start workout"
-                size="lg"
-              />
+              <div class="flex gap-2 shrink-0">
+                <UButton
+                  variant="soft"
+                  color="neutral"
+                  icon="i-lucide-pencil"
+                  label="Edit"
+                  aria-label="Edit workout"
+                  size="sm"
+                  @click="router.push(`/workouts/${w.id}/edit`)"
+                />
+                <UButton
+                  variant="ghost"
+                  color="neutral"
+                  icon="i-lucide-play"
+                  aria-label="Start workout"
+                  size="lg"
+                  @click="router.push(`/workouts/${w.id}`)"
+                />
+              </div>
             </div>
           </UCard>
         </div>

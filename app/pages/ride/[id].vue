@@ -66,7 +66,8 @@ const songTitle = computed(() => {
   if (!cue?.songId) {
     return cue?.silence ? 'Silence' : 'No song'
   }
-  return songs.value.find((s) => s.id === cue.songId)?.name ?? cue.songId
+  const song = songs.value.find((s) => s.id === cue.songId)
+  return song?.name ?? 'Song not found'
 })
 
 const musicBpm = computed(() => {
