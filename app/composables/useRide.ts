@@ -171,31 +171,45 @@ export function useRide(
       return
     }
 
-    const ctx = new AudioContext()
-    
-    // Generate procedural audio for demo songs
-    const demoBuffers = generateDemoAudioBuffers(ctx)
-    for (const [id, buffer] of demoBuffers) {
-      mixer.value.loadBuffer(id, buffer)
-    }
+    try {
+      console.info('useRide: Loading audio...')
+      const ctx = new AudioContext()
+      
+      // Generate procedural audio for demo songs
+      console.info('useRide: Generating procedural audio')
+      const demoBuffers = generateDemoAudioBuffers(ctx)
+      for (const [id, buffer] of demoBuffers) {
+        mixer.value.loadBuffer(id, buffer)
+        console.info(`useRide: Loaded procedural buffer for ${id}`)
+      }
 
-    // Load uploaded audio blobs
-    const { getAudioBlob } = await import('~/repositories/workout-store')
-    for (const song of songs.value) {
-      if (song.source === 'folder' && song.id.startsWith('upload-')) {
-        const blob = await getAudioBlob(song.id)
-        if (blob) {
-          const arrayBuffer = await blob.arrayBuffer()
-          const buffer = await ctx.decodeAudioData(arrayBuffer)
-          mixer.value.loadBuffer(song.id, buffer)
+      // Load uploaded audio blobs
+      const { getAudioBlob } = await import('~/repositories/workout-store')
+      for (const song of songs.value) {
+        if (song.source === 'folder' && song.id.startsWith('upload-')) {
+          console.info(`useRide: Loading uploaded file ${song.name}`)
+          const blob = await getAudioBlob(song.id)
+          if (blob) {
+            const arrayBuffer = await blob.arrayBuffer()
+            const buffer = await ctx.decodeAudioData(arrayBuffer)
+            mixer.value.loadBuffer(song.id, buffer)
+            console.info(`useRide: Decoded audio for ${song.name}`)
+          } else {
+            console.warn(`useRide: No blob found for ${song.id}`)
+          }
         }
       }
-    }
 
-    // Schedule all cues
-    mixer.value.scheduleCues(plan.value.cues, songs.value)
-    
-    audioReady.value = true
+      // Schedule all cues
+      console.info(`useRide: Scheduling ${plan.value.cues.length} cues`)
+      mixer.value.scheduleCues(plan.value.cues, songs.value)
+      
+      audioReady.value = true
+      console.info('useRide: Audio ready!')
+    } catch (error) {
+      console.error('useRide: Failed to load audio', error)
+      audioReady.value = false
+    }
   }
 
   function startRide() {

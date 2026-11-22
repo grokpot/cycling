@@ -9,6 +9,9 @@ export function generateLoop(bpm: number, durationSeconds: number, ctx: AudioCon
   const beatDuration = (60 / bpm) * sampleRate
   const barDuration = beatDuration * 4
 
+  // Energy scales with BPM
+  const energy = Math.min(1, (bpm - 60) / 100) // 0 at 60 BPM, 1 at 160+ BPM
+
   for (let i = 0; i < buffer.length; i++) {
     const t = i / sampleRate
     const beatPhase = (i % beatDuration) / beatDuration
@@ -17,44 +20,58 @@ export function generateLoop(bpm: number, durationSeconds: number, ctx: AudioCon
 
     // Kick drum on beats 1 and 3
     let kick = 0
-    if ((beatIndex === 0 || beatIndex === 2) && beatPhase < 0.1) {
-      const env = Math.exp(-beatPhase * 40)
-      kick = Math.sin(2 * Math.PI * (60 + 40 * beatPhase) * t) * env * 0.6
+    if ((beatIndex === 0 || beatIndex === 2) && beatPhase < 0.12) {
+      const env = Math.exp(-beatPhase * 35)
+      const pitch = 55 + 35 * beatPhase // Pitch bend down
+      kick = Math.sin(2 * Math.PI * pitch * t) * env * 0.65
     }
 
     // Snare on beats 2 and 4
     let snare = 0
-    if ((beatIndex === 1 || beatIndex === 3) && beatPhase < 0.08) {
-      const env = Math.exp(-beatPhase * 50)
-      const noise = (Math.random() * 2 - 1) * env * 0.3
-      snare = noise
+    if ((beatIndex === 1 || beatIndex === 3) && beatPhase < 0.09) {
+      const env = Math.exp(-beatPhase * 45)
+      const noise = (Math.random() * 2 - 1) * env * (0.25 + energy * 0.15)
+      const tone = Math.sin(2 * Math.PI * 220 * t) * env * 0.1
+      snare = noise + tone
     }
 
-    // Hi-hat on eighth notes
+    // Hi-hat on eighth notes (more energetic at higher BPM)
     let hihat = 0
     const eighthPhase = (i % (beatDuration / 2)) / (beatDuration / 2)
-    if (eighthPhase < 0.05) {
-      const env = Math.exp(-eighthPhase * 60)
-      const noise = (Math.random() * 2 - 1) * env * 0.15
+    if (eighthPhase < 0.04) {
+      const env = Math.exp(-eighthPhase * 70)
+      const noise = (Math.random() * 2 - 1) * env * (0.12 + energy * 0.08)
       hihat = noise
     }
 
-    // Bass line (simple root-fifth pattern)
+    // Bass line (more variation at higher energy)
     let bass = 0
     const baseFreq = 55 // A1
-    const freq = barPhase < 0.5 ? baseFreq : baseFreq * 1.5 // root to fifth
-    bass = Math.sin(2 * Math.PI * freq * t) * 0.2
+    let freq = baseFreq
+    if (energy > 0.5) {
+      // Add some movement at higher energy
+      const pattern = Math.floor((i / beatDuration) % 8)
+      if (pattern === 3 || pattern === 7) {
+        freq = baseFreq * 1.5 // Fifth
+      } else if (pattern === 5) {
+        freq = baseFreq * 1.333 // Fourth
+      }
+    } else {
+      // Simple root-fifth at lower energy
+      freq = barPhase < 0.5 ? baseFreq : baseFreq * 1.5
+    }
+    bass = Math.sin(2 * Math.PI * freq * t) * (0.18 + energy * 0.07)
 
     // Fade in/out at edges
     let fadeMult = 1
-    const fadeSeconds = 0.05
+    const fadeSeconds = 0.03
     if (t < fadeSeconds) {
       fadeMult = t / fadeSeconds
     } else if (t > durationSeconds - fadeSeconds) {
       fadeMult = (durationSeconds - t) / fadeSeconds
     }
 
-    const sample = (kick + snare + hihat + bass) * fadeMult * 0.7
+    const sample = (kick + snare + hihat + bass) * fadeMult * 0.75
     leftChannel[i] = sample
     rightChannel[i] = sample
   }

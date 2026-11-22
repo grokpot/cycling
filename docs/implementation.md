@@ -246,3 +246,74 @@ These stay out of the first release. The types above are already the payloads.
 - Instructor export: one MP3 plus a cue sheet, rendered on the server from the same `shared/planner.ts` cues
 
 Analysis and the live mix stay on the device after those routes exist.
+
+## Audio verification
+
+The audio core loop uses **SoundTouchJS** (MIT license) for pitch-preserving time stretch and procedurally generated drum + bass loops for demo songs.
+
+### Quick verification
+
+1. Start dev server: `npm run dev`
+2. Open Chrome/Edge at `http://localhost:3000`
+3. Click "Start demo ride" on welcome screen
+4. Click "Start" on pre-ride plan
+5. Audio should begin playing immediately
+
+### Expected behavior
+
+Demo workout exercises real stretching (3-7% on most intervals):
+
+- **Interval 1 (Warmup)**: 70 RPM = 70 BPM, no stretch
+- **Interval 2**: 86 RPM from 90 BPM song (~4.7% stretch)
+- **Interval 3**: 76 RPM from 80 BPM song (~5.3% stretch)
+- **Interval 4**: 92 RPM from 95 BPM song (~3.3% stretch)
+- **Interval 5**: 84 RPM from 90 BPM song (~7.1% stretch)
+- **Interval 6**: 88 RPM from 90 BPM song (~2.3% stretch)
+- **Interval 7 (Cooldown)**: 70 RPM = 70 BPM, no stretch
+
+Tempo changes should be audible between intervals. Crossfades should be smooth and on-beat.
+
+### Console logs
+
+Expected output during audio load and playback:
+
+```
+useRide: Loading audio...
+useRide: Generating procedural audio
+AudioMixer: Scheduling 7 cues
+Cue 0: Demo Track - 70 BPM → 70 BPM (stretch: 1.000)
+Cue 1: Demo Track - 90 BPM → 86 BPM (stretch: 1.047)
+Cue 2: Demo Track - 80 BPM → 76 BPM (stretch: 1.053)
+...
+AudioMixer: Scheduled 7/7 cues successfully
+AudioMixer: Starting playback with 7 cues
+```
+
+### Verifying quality
+
+**Audio not silent**: Check browser console for RMS energy logs, or open DevTools Audio panel and verify waveforms.
+
+**BPM accuracy**: Each interval's tempo should match its target cadence within ~1%. Listen for the beat and count RPM: 60 beats in 60 seconds = 60 BPM.
+
+**No clicks**: Crossfades use 4-8 beat linear ramps. Listen for smooth transitions between intervals, no pops or clicks.
+
+**On-beat pulse**: The cadence card pulses on each beat. Visual timing should match audio kicks.
+
+### Common issues
+
+**No audio**: Check AudioContext state in console. Browser may require user gesture before audio plays. Verify `AudioContext.state === 'running'`.
+
+**Timing off**: Check stretch rate logs. SoundTouchJS tempo = songBPM / targetBPM. Values should match expected.
+
+**Glitches**: Check for "Failed to process" errors. May indicate buffer underrun or processing error.
+
+### Manual testing checklist
+
+- ✅ Audio plays immediately on ride start
+- ✅ Tempo changes are audible and correct
+- ✅ Crossfades are smooth (no clicks)
+- ✅ On-beat pulse syncs with audio
+- ✅ Pause/resume works (Space key)
+- ✅ Skip interval transitions cleanly (S key)
+- ✅ Full 30-minute ride plays through
+- ✅ Console shows no errors

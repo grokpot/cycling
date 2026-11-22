@@ -1,7 +1,7 @@
 /** Real audio mixer with pitch-preserving time stretch and crossfades. */
 
 import type { Cue, Song } from '#shared/types'
-import { TimeStretcher } from './time-stretch'
+import { SoundTouchStretcher } from './soundtouch-stretch'
 
 interface ScheduledCue {
   cue: Cue
@@ -12,7 +12,7 @@ interface ScheduledCue {
 
 export class AudioMixer {
   private ctx: AudioContext | null = null
-  private stretcher: TimeStretcher | null = null
+  private stretcher: SoundTouchStretcher | null = null
   private masterGain: GainNode | null = null
   private audioBuffers: Map<string, AudioBuffer> = new Map()
   private scheduledCues: ScheduledCue[] = []
@@ -22,11 +22,18 @@ export class AudioMixer {
 
   private ensureCtx() {
     if (!this.ctx) {
-      this.ctx = new AudioContext()
-      this.stretcher = new TimeStretcher(this.ctx)
-      this.masterGain = this.ctx.createGain()
-      this.masterGain.connect(this.ctx.destination)
-      this.masterGain.gain.value = 0.8
+      try {
+        this.ctx = new AudioContext()
+        console.info(`AudioContext created: sampleRate=${this.ctx.sampleRate}, state=${this.ctx.state}`)
+        
+        this.stretcher = new SoundTouchStretcher(this.ctx)
+        this.masterGain = this.ctx.createGain()
+        this.masterGain.connect(this.ctx.destination)
+        this.masterGain.gain.value = 0.8
+      } catch (error) {
+        console.error('Failed to create AudioContext:', error)
+        throw error
+      }
     }
   }
 
@@ -43,70 +50,87 @@ export class AudioMixer {
   scheduleCues(cues: Cue[], songs: Song[]) {
     this.ensureCtx()
     if (!this.ctx || !this.stretcher) {
+      console.error('AudioMixer: Context not ready for scheduling')
       return
     }
 
     this.scheduledCues = []
     let currentTime = 0
+    let processedCount = 0
+
+    console.info(`AudioMixer: Scheduling ${cues.length} cues`)
 
     for (const cue of cues) {
       if (cue.silence || !cue.songId) {
+        console.info(`Cue ${cue.pieceIndex}: Silence, skipping`)
         currentTime += cue.durationSeconds
         continue
       }
 
       const song = songs.find((s) => s.id === cue.songId)
       if (!song?.analysis) {
+        console.warn(`Cue ${cue.pieceIndex}: Song ${cue.songId} not found or missing analysis`)
         currentTime += cue.durationSeconds
         continue
       }
 
       const originalBuffer = this.audioBuffers.get(cue.songId)
       if (!originalBuffer) {
+        console.warn(`Cue ${cue.pieceIndex}: Audio buffer for ${cue.songId} not loaded`)
         currentTime += cue.durationSeconds
         continue
       }
 
-      // Compute stretch rate
-      const targetBpm = cue.ratio === '2:1' ? cue.lockedRpm * 2 : cue.lockedRpm
-      const stretchRate = song.analysis.bpm / targetBpm
+      try {
+        // Compute stretch rate
+        const targetBpm = cue.ratio === '2:1' ? cue.lockedRpm * 2 : cue.lockedRpm
+        const stretchRate = song.analysis.bpm / targetBpm
 
-      // Stretch the buffer
-      const stretchedBuffer = this.stretcher.stretch(originalBuffer, stretchRate)
+        console.info(`Cue ${cue.pieceIndex}: ${song.name} - ${song.analysis.bpm} BPM → ${targetBpm} BPM (stretch: ${stretchRate.toFixed(3)})`)
 
-      // Extract segment from inBeat to outBeat
-      const beatDuration = 60 / targetBpm
-      const startSample = Math.floor(cue.inBeat * beatDuration * this.ctx.sampleRate)
-      const endSample = Math.floor(cue.outBeat * beatDuration * this.ctx.sampleRate)
-      const segmentLength = Math.min(
-        endSample - startSample,
-        stretchedBuffer.length - startSample,
-        Math.floor(cue.durationSeconds * this.ctx.sampleRate),
-      )
+        // Stretch the buffer
+        const stretchedBuffer = this.stretcher.stretch(originalBuffer, stretchRate)
 
-      const segmentBuffer = this.ctx.createBuffer(
-        stretchedBuffer.numberOfChannels,
-        segmentLength,
-        this.ctx.sampleRate,
-      )
+        // Extract segment from inBeat to outBeat
+        const beatDuration = 60 / targetBpm
+        const startSample = Math.floor(cue.inBeat * beatDuration * this.ctx.sampleRate)
+        const endSample = Math.floor(cue.outBeat * beatDuration * this.ctx.sampleRate)
+        const segmentLength = Math.min(
+          endSample - startSample,
+          stretchedBuffer.length - startSample,
+          Math.floor(cue.durationSeconds * this.ctx.sampleRate),
+        )
 
-      for (let ch = 0; ch < stretchedBuffer.numberOfChannels; ch++) {
-        const src = stretchedBuffer.getChannelData(ch)
-        const dest = segmentBuffer.getChannelData(ch)
-        for (let i = 0; i < segmentLength; i++) {
-          dest[i] = src[startSample + i] ?? 0
+        const segmentBuffer = this.ctx.createBuffer(
+          stretchedBuffer.numberOfChannels,
+          segmentLength,
+          this.ctx.sampleRate,
+        )
+
+        for (let ch = 0; ch < stretchedBuffer.numberOfChannels; ch++) {
+          const src = stretchedBuffer.getChannelData(ch)
+          const dest = segmentBuffer.getChannelData(ch)
+          for (let i = 0; i < segmentLength; i++) {
+            dest[i] = src[startSample + i] ?? 0
+          }
         }
-      }
 
-      this.scheduledCues.push({
-        cue,
-        buffer: segmentBuffer,
-        startTime: currentTime,
-        duration: cue.durationSeconds,
-      })
+        this.scheduledCues.push({
+          cue,
+          buffer: segmentBuffer,
+          startTime: currentTime,
+          duration: cue.durationSeconds,
+        })
+
+        processedCount++
+      } catch (error) {
+        console.error(`Cue ${cue.pieceIndex}: Failed to process`, error)
+      }
 
       currentTime += cue.durationSeconds
     }
+
+    console.info(`AudioMixer: Scheduled ${processedCount}/${cues.length} cues successfully`)
   }
 
   /**
@@ -115,13 +139,22 @@ export class AudioMixer {
   start() {
     this.ensureCtx()
     if (!this.ctx || !this.masterGain) {
+      console.error('AudioMixer: Failed to initialize AudioContext')
+      return
+    }
+
+    if (this.scheduledCues.length === 0) {
+      console.warn('AudioMixer: No cues scheduled')
       return
     }
 
     this.stop()
     this.startTime = this.ctx.currentTime
 
-    for (const scheduled of this.scheduledCues) {
+    console.info(`AudioMixer: Starting playback with ${this.scheduledCues.length} cues at time ${this.startTime}`)
+
+    for (let i = 0; i < this.scheduledCues.length; i++) {
+      const scheduled = this.scheduledCues[i]
       const source = this.ctx.createBufferSource()
       source.buffer = scheduled.buffer
 
@@ -132,28 +165,43 @@ export class AudioMixer {
 
       // Schedule start
       const when = this.startTime + scheduled.startTime
-      source.start(when)
+      
+      // Determine if this cue should fade in (not the first cue)
+      const prevIndex = i - 1
+      const shouldFadeIn = prevIndex >= 0
+      
+      if (shouldFadeIn) {
+        const prevScheduled = this.scheduledCues[prevIndex]
+        const crossfadeBeats = prevScheduled.cue.crossfadeBeats || 4
+        const beatDuration = 60 / prevScheduled.cue.lockedRpm
+        const crossfadeDuration = crossfadeBeats * beatDuration
+        
+        // Start at 0 and fade in
+        gain.gain.setValueAtTime(0, when)
+        gain.gain.linearRampToValueAtTime(1, when + crossfadeDuration)
+      } else {
+        // First cue, start at full volume
+        gain.gain.setValueAtTime(1, when)
+      }
 
-      // Schedule crossfade if there's a next cue
-      const nextIndex = this.scheduledCues.indexOf(scheduled) + 1
+      // Schedule fade out if there's a next cue
+      const nextIndex = i + 1
       if (nextIndex < this.scheduledCues.length) {
         const crossfadeBeats = scheduled.cue.crossfadeBeats || 4
         const beatDuration = 60 / scheduled.cue.lockedRpm
         const crossfadeDuration = crossfadeBeats * beatDuration
 
-        // Fade out this source
+        // Fade out before the end
         const fadeOutStart = when + scheduled.duration - crossfadeDuration
         gain.gain.setValueAtTime(1, fadeOutStart)
         gain.gain.linearRampToValueAtTime(0, fadeOutStart + crossfadeDuration)
-
-        // Next source will fade in automatically (we'll set that when we process it)
-      } else {
-        // Last cue, no fade out
-        gain.gain.value = 1
       }
 
+      source.start(when)
       this.activeSources.push(source)
     }
+
+    console.info('AudioMixer: All sources scheduled successfully')
   }
 
   /**
