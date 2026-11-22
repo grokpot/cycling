@@ -119,6 +119,11 @@ export async function saveSong(song: Song): Promise<void> {
   await withStore('songs', 'readwrite', (os) => os.put(plain(song)))
 }
 
+export async function deleteSong(id: string): Promise<void> {
+  await withStore('songs', 'readwrite', (os) => os.delete(id))
+  await withStore('audioBlobs', 'readwrite', (os) => os.delete(id))
+}
+
 export async function saveAudioBlob(songId: string, blob: Blob): Promise<void> {
   await withStore('audioBlobs', 'readwrite', (os) =>
     os.put({ id: songId, blob }),
@@ -193,6 +198,9 @@ export function useWorkoutStore() {
     saveWorkout,
     listSongs,
     saveSong,
+    deleteSong,
+    saveAudioBlob,
+    getAudioBlob,
     savePlan,
     getPlan,
     getPlanForWorkout,

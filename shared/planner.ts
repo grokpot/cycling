@@ -59,20 +59,14 @@ function buildPieces(
       if (locked === null && override !== undefined) {
         locked = override
       }
+      if (locked === null) {
+        locked = profile.preferredCadence
+      }
       const scaledWatts =
         part.wattsEnd !== null
           ? part.wattsEnd
           : resolveWatts(subInterval, profile, options.intensityScale)
       const ftpPercent = ftpPercentForInterval(subInterval, profile)
-
-      if (locked === null) {
-        gaps.push({
-          pieceIndex,
-          intervalId: interval.id,
-          durationSeconds: part.durationSeconds,
-          reason: 'missing_cadence',
-        })
-      }
 
       pieces.push({
         pieceIndex: pieceIndex++,
@@ -229,14 +223,14 @@ export function planRide(
     }
 
     if (piece.lockedRpm === null) {
-      continue
+      piece.lockedRpm = profile.preferredCadence
     }
 
     if (typeof resolution === 'object' && 'cadence' in resolution) {
       piece.lockedRpm = resolution.cadence
     }
 
-    const lockedRpm = piece.lockedRpm!
+    const lockedRpm = piece.lockedRpm
     let gate = STRETCH_GATE
     if (resolution === 'stretch16') {
       gate = STRETCH_WIDE

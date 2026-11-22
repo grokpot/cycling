@@ -220,6 +220,18 @@ const option = computed(() => {
         },
         data: barData.value,
         z: 2,
+        markLine: props.elapsedMs > 0 ? {
+          silent: true,
+          symbol: 'none',
+          lineStyle: {
+            color: '#ffffff',
+            width: 2,
+            type: 'solid',
+          },
+          data: [{ xAxis: elapsedSeconds.value }],
+          animation: false,
+          z: 100,
+        } : undefined,
       },
       // Song lane
       ...(props.plan && songData.value.length > 0 ? [{
@@ -268,41 +280,6 @@ const option = computed(() => {
         z: 1,
       }] : []),
     ],
-    // Playhead
-    ...(props.elapsedMs > 0 ? {
-      graphic: [
-        {
-          type: 'line',
-          z: 100,
-          shape: {
-            x1: 0,
-            y1: 0,
-            x2: 0,
-            y2: 0,
-          },
-          style: {
-            stroke: '#ffffff',
-            lineWidth: 2,
-          },
-          onupdate: function(this: any) {
-            const chart = chartRef.value?.chart
-            if (!chart) return
-
-            const point = chart.convertToPixel({ xAxisIndex: 0 }, elapsedSeconds.value)
-            if (typeof point === 'number') {
-              const grid = chart.getOption().grid[0]
-              const top = grid.top
-              const bottom = chart.getHeight() - grid.bottom
-              
-              this.shape.x1 = point
-              this.shape.x2 = point
-              this.shape.y1 = top
-              this.shape.y2 = bottom
-            }
-          },
-        },
-      ],
-    } : {}),
     tooltip: {
       trigger: 'item',
       backgroundColor: '#1a1a1a',
@@ -335,12 +312,7 @@ function handleClick(event: any) {
   }
 }
 
-// Force chart update when elapsed changes
-watch(() => props.elapsedMs, () => {
-  nextTick(() => {
-    chartRef.value?.chart?.resize()
-  })
-})
+// No need to force resize on elapsed change anymore
 </script>
 
 <template>

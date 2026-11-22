@@ -334,7 +334,7 @@ export function useRide(
   watch(
     () => [workout.value, plan.value, profile.value, songs.value] as const,
     async () => {
-      if (workout.value && plan.value && profile.value && songs.value.length > 0) {
+      if (workout.value && plan.value && profile.value) {
         await loadAudio()
         startRide()
       }
