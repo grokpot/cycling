@@ -214,7 +214,17 @@ async function startRide() {
 <template>
   <div v-if="workout && profile" class="flex flex-col h-screen">
     <!-- Header -->
-    <UDashboardNavbar :title="workout.name" />
+    <div class="flex items-center justify-between p-4 border-b border-hairline">
+      <h1 class="text-lg font-semibold">{{ workout.name }}</h1>
+      <UButton
+        variant="soft"
+        color="neutral"
+        icon="i-lucide-pencil"
+        label="Edit"
+        size="sm"
+        @click="router.push(`/workouts/${workout.id}/edit`)"
+      />
+    </div>
     
     <!-- Scrollable content -->
     <div class="flex-1 overflow-y-auto">
