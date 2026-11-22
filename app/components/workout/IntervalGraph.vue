@@ -7,10 +7,23 @@ import type { Workout, Profile } from '#shared/types'
 import { ftpPercentForInterval } from '#shared/targets'
 import { formatDuration } from '#shared/format'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   workout: Workout
   profile: Profile
+  elapsedMs?: number
+  interactive?: boolean
+  intensityScale?: number
+}>(), {
+  elapsedMs: 0,
+  interactive: false,
+  intensityScale: 100,
+})
+
+const emit = defineEmits<{
+  seek: [elapsedMs: number]
 }>()
+
+const hover = ref<{ x: number; time: string } | null>(null)
 
 interface Bar {
   id: string
@@ -25,14 +38,23 @@ interface Bar {
   timeLabel: string
 }
 
+const totalDuration = computed(() => 
+  props.workout.intervals.reduce((sum, i) => sum + i.durationSeconds, 0)
+)
+
+const elapsedPercent = computed(() => {
+  if (totalDuration.value === 0) return 0
+  return (props.elapsedMs / (totalDuration.value * 1000)) * 100
+})
+
 const bars = computed((): Bar[] => {
-  const totalDuration = props.workout.intervals.reduce((sum, i) => sum + i.durationSeconds, 0)
-  if (totalDuration === 0) return []
+  const total = totalDuration.value
+  if (total === 0) return []
 
   let currentPosition = 0
   return props.workout.intervals.map((interval) => {
-    const ftpPct = ftpPercentForInterval(interval, props.profile) ?? 70
-    const widthPercent = (interval.durationSeconds / totalDuration) * 100
+    const ftpPct = (ftpPercentForInterval(interval, props.profile) ?? 70) * (props.intensityScale / 100)
+    const widthPercent = (interval.durationSeconds / total) * 100
     const heightPercent = Math.min(100, (ftpPct / 150) * 100)
     
     let endHeightPercent: number | undefined
@@ -75,6 +97,38 @@ const bars = computed((): Bar[] => {
   })
 })
 
+function handleClick(event: MouseEvent) {
+  if (!props.interactive) return
+  
+  const target = event.currentTarget as HTMLElement
+  const rect = target.getBoundingClientRect()
+  const clickX = event.clientX - rect.left
+  const percent = (clickX / rect.width) * 100
+  const ms = (percent / 100) * totalDuration.value * 1000
+  emit('seek', ms)
+}
+
+function handleMouseMove(event: MouseEvent) {
+  if (!props.interactive) return
+  
+  const target = event.currentTarget as HTMLElement
+  const rect = target.getBoundingClientRect()
+  const hoverX = event.clientX - rect.left
+  const percent = (hoverX / rect.width) * 100
+  const ms = (percent / 100) * totalDuration.value * 1000
+  
+  const totalSeconds = Math.floor(ms / 1000)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  const timeStr = `${minutes}:${seconds.toString().padStart(2, '0')}`
+  
+  hover.value = { x: hoverX, time: timeStr }
+}
+
+function handleMouseLeave() {
+  hover.value = null
+}
+
 const maxHeight = 200
 
 const usedZones = computed(() => {
@@ -98,7 +152,10 @@ const usedZones = computed(() => {
   <div class="space-y-2">
     <div 
       class="relative bg-background border border-hairline rounded-lg p-4" 
-      :style="{ height: `${maxHeight + 60}px` }"
+      :style="{ height: `${maxHeight + 60}px`, cursor: interactive ? 'pointer' : 'default' }"
+      @click="handleClick"
+      @mousemove="handleMouseMove"
+      @mouseleave="handleMouseLeave"
     >
       <!-- Y-axis labels -->
       <div class="absolute left-0 top-4 bottom-10 w-8 flex flex-col justify-between text-xs text-muted">
@@ -114,6 +171,39 @@ const usedZones = computed(() => {
         <div class="absolute inset-x-0 bottom-10 h-px bg-hairline" />
         <div class="absolute inset-x-0 bottom-1/3 h-px bg-hairline opacity-30" />
         <div class="absolute inset-x-0 bottom-2/3 h-px bg-hairline opacity-30" />
+        
+        <!-- Progress overlay (elapsed time) -->
+        <div 
+          v-if="elapsedMs > 0"
+          class="absolute bottom-10 left-0 bg-gray-400/20 pointer-events-none"
+          :style="{ 
+            height: `${maxHeight}px`,
+            width: `${elapsedPercent}%`
+          }"
+        />
+        
+        <!-- Playhead line -->
+        <div 
+          v-if="elapsedMs > 0"
+          class="absolute bottom-10 top-4 w-0.5 bg-black pointer-events-none"
+          :style="{ left: `${elapsedPercent}%` }"
+        />
+        
+        <!-- Hover line -->
+        <div 
+          v-if="hover"
+          class="absolute bottom-10 top-4 w-px bg-gray-400 opacity-50 pointer-events-none"
+          :style="{ left: `${hover.x}px` }"
+        />
+        
+        <!-- Hover tooltip -->
+        <div 
+          v-if="hover"
+          class="absolute -top-8 bg-background border border-default rounded px-2 py-1 text-xs font-medium shadow-lg pointer-events-none"
+          :style="{ left: `${hover.x}px`, transform: 'translateX(-50%)' }"
+        >
+          {{ hover.time }}
+        </div>
         
         <!-- Bars container -->
         <div class="absolute inset-x-0 bottom-10 flex" :style="{ height: `${maxHeight}px` }">
