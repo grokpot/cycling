@@ -265,9 +265,9 @@ export function useRide(
     pieceIndex.value = result.pieceIndex
     applyTrainerTarget()
 
-    // TODO: Implement mixer.seekTo(cue, offsetMs) to handle audio seeking
-    // For now, just restart audio from the beginning of the ride
-    // A full implementation would need to reschedule only upcoming cues
+    if (audioReady.value) {
+      mixer.value.seekTo(targetMs / 1000)
+    }
   }
 
   function stopRide() {
