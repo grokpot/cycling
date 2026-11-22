@@ -259,26 +259,52 @@ export function planRide(
     }
 
     if (!pick) {
-      const needNew =
-        piece.durationSeconds > SHORT_PIECE_SEC ||
-        lastSongId === null ||
-        lastLockedRpm !== lockedRpm
-
-      if (needNew && piece.durationSeconds > SHORT_PIECE_SEC) {
-        songs = songs.filter((s) => !usedOnLongPieces.has(s.id))
+      // Check for song override on the interval
+      const override = piece.interval.songOverride
+      if (override) {
+        const overrideSong = songs.find((s) => s.id === override)
+        if (overrideSong?.analysis) {
+          const targets: Array<{ ratio: '1:1' | '2:1'; bpm: number }> = [
+            { ratio: '1:1', bpm: lockedRpm },
+            { ratio: '2:1', bpm: lockedRpm * 2 },
+          ]
+          for (const t of targets) {
+            const stretch = stretchForSong(overrideSong.analysis.bpm, t.bpm)
+            if (Math.abs(stretch) <= gate) {
+              pick = {
+                song: overrideSong,
+                ratio: t.ratio,
+                stretchPercent: stretch,
+                targetBpm: t.bpm,
+              }
+              break
+            }
+          }
+        }
       }
 
-      pick = pickSong(
-        songs,
-        profile,
-        lockedRpm,
-        gate,
-        banned,
-        piece.ftpPercent,
-        preferHighEnergy,
-        'alternate',
-        ratioAlternate++,
-      )
+      if (!pick) {
+        const needNew =
+          piece.durationSeconds > SHORT_PIECE_SEC ||
+          lastSongId === null ||
+          lastLockedRpm !== lockedRpm
+
+        if (needNew && piece.durationSeconds > SHORT_PIECE_SEC) {
+          songs = songs.filter((s) => !usedOnLongPieces.has(s.id))
+        }
+
+        pick = pickSong(
+          songs,
+          profile,
+          lockedRpm,
+          gate,
+          banned,
+          piece.ftpPercent,
+          preferHighEnergy,
+          'alternate',
+          ratioAlternate++,
+        )
+      }
     }
 
     if (!pick) {
