@@ -8,17 +8,19 @@ defineProps<{
 </script>
 
 <template>
-  <UCard :class="{ 'pulse-card': pulse }">
-    <p class="text-caption uppercase text-muted tracking-wide">
-      {{ title }}
-    </p>
-    <p class="text-h2 tabular-nums mt-1">
-      {{ value }}
-    </p>
-    <p v-if="caption" class="text-caption text-muted mt-1">
-      {{ caption }}
-    </p>
-    <slot />
+  <UCard :class="{ 'pulse-card': pulse }" class="p-4">
+    <div class="flex flex-col gap-1">
+      <div class="text-xs text-muted uppercase tracking-wide font-medium">
+        {{ title }}
+      </div>
+      <div class="text-4xl font-bold tabular-nums">
+        {{ value }}
+      </div>
+      <div v-if="caption" class="text-sm text-muted">
+        {{ caption }}
+      </div>
+      <slot />
+    </div>
   </UCard>
 </template>
 
