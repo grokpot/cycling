@@ -80,10 +80,12 @@ async function loadDemoData() {
     </div>
     <UEmpty
       v-if="workouts.length === 0"
+      icon="i-lucide-bike"
       title="No workouts yet"
-      description="Import a .zwo file or build a workout."
+      description="Start by loading demo data, importing a .zwo file, or building your first workout."
       :actions="[
-        { label: 'New workout', to: '/workouts/new' },
+        { label: 'Load demo data', onClick: loadDemoData, icon: 'i-lucide-lightbulb' },
+        { label: 'New workout', to: '/workouts/new', icon: 'i-lucide-plus' },
       ]"
     />
     <div v-else class="space-y-2">

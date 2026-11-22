@@ -289,14 +289,22 @@ async function startRide() {
           </UFormField>
           <UFormField
             label="Simulated trainer"
-            description="Ride without a KICKR. Turn this off to require the trainer."
+            description="Demo mode for testing without hardware. Turn off to connect a real KICKR via Bluetooth."
           >
             <USwitch v-model="simulatedTrainer" />
           </UFormField>
+          <UAlert
+            v-if="!simulatedTrainer && !trainerConnected"
+            color="warning"
+            variant="soft"
+            title="Trainer required"
+            description="Click Connect trainer below to pair your KICKR via Web Bluetooth."
+          />
           <UButton
             v-if="!simulatedTrainer"
             type="button"
             label="Connect trainer"
+            icon="i-lucide-bluetooth"
             variant="soft"
             @click="connectTrainer"
           />

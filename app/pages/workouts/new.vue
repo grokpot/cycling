@@ -150,18 +150,26 @@ async function save() {
 <template>
   <UDashboardNavbar title="Workout builder" />
   <div class="p-4 max-w-2xl space-y-4">
-    <p class="text-sm text-muted">
-      Each step is a duration, an effort, and an optional cadence. Leave cadence empty to fill it on the plan.
-    </p>
+    <UAlert
+      color="info"
+      variant="soft"
+      title="Build your workout"
+      description="Each step has duration, effort (% FTP, watts, zone, or RPE), and optional cadence. Leave cadence empty to auto-fill on the pre-ride plan based on intensity."
+    />
     <UForm class="space-y-4" @submit.prevent="save">
       <UFormField label="Name">
         <UInput v-model="name" />
       </UFormField>
-      <div class="flex flex-wrap gap-2">
-        <UButton type="button" label="Steady" icon="i-lucide-minus" variant="soft" @click="addSteady" />
-        <UButton type="button" label="Ramp" icon="i-lucide-trending-up" variant="soft" @click="addRamp" />
-        <UButton type="button" label="Warmup" icon="i-lucide-sunrise" variant="soft" @click="addWarmup" />
-        <UButton type="button" label="Cooldown" icon="i-lucide-sunset" variant="soft" @click="addCooldown" />
+      <div class="space-y-2">
+        <p class="text-xs uppercase tracking-wide text-muted">
+          Add intervals
+        </p>
+        <div class="flex flex-wrap gap-2">
+          <UButton type="button" label="Steady" icon="i-lucide-minus" variant="soft" @click="addSteady" />
+          <UButton type="button" label="Ramp" icon="i-lucide-trending-up" variant="soft" @click="addRamp" />
+          <UButton type="button" label="Warmup" icon="i-lucide-sunrise" variant="soft" @click="addWarmup" />
+          <UButton type="button" label="Cooldown" icon="i-lucide-sunset" variant="soft" @click="addCooldown" />
+        </div>
       </div>
 
       <UEmpty
@@ -282,10 +290,22 @@ async function save() {
         </div>
       </UCard>
 
-      <div class="flex items-center gap-3">
-        <UButton type="submit" label="Save workout" :disabled="intervals.length === 0" />
-        <p v-if="intervals.length === 0" class="text-sm text-muted">
-          Add a step before saving.
+      <div class="space-y-2">
+        <UButton 
+          type="submit" 
+          label="Save workout" 
+          icon="i-lucide-save"
+          :disabled="intervals.length === 0" 
+        />
+        <UAlert
+          v-if="intervals.length === 0"
+          color="warning"
+          variant="soft"
+          title="Add at least one interval"
+          description="A workout needs at least one step. Click Warmup, Steady, Ramp, or Cooldown above."
+        />
+        <p v-else class="text-sm text-muted">
+          Total duration: {{ formatDuration(intervals.reduce((s, i) => s + i.durationSeconds, 0)) }}
         </p>
       </div>
     </UForm>
