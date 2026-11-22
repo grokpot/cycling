@@ -50,10 +50,13 @@ export class SoundTouchStretcher {
     const bufferSize = 4096
     const extractBuffer = new Float32Array(bufferSize * channels)
     
+    console.info(`SoundTouch: Processing ${input.length} samples at rate ${rate}, expecting ~${outputLength} output samples`)
+    
     while (samplesRead < outputLength) {
       // Extract interleaved samples
       const framesExtracted = filter.extract(extractBuffer, bufferSize)
       if (framesExtracted === 0) {
+        console.info(`SoundTouch: Extract returned 0 frames at position ${samplesRead}/${outputLength}`)
         break
       }
 
@@ -66,6 +69,8 @@ export class SoundTouchStretcher {
 
       samplesRead += framesExtracted
     }
+
+    console.info(`SoundTouch: Extracted ${samplesRead} samples total`)
 
     // Create output buffer with actual samples read
     const output = this.ctx.createBuffer(
