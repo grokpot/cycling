@@ -276,16 +276,27 @@ const columns = [
                   <span class="text-xs text-muted tabular-nums min-w-[2.5rem]">
                     {{ player.currentSong?.id === song.id ? formatDuration(player.currentTime) : '0:00' }}
                   </span>
-                  <input
-                    type="range"
-                    :min="0"
-                    :max="song.analysis.durationSeconds"
-                    :step="0.1"
-                    :value="player.currentSong?.id === song.id ? player.currentTime : 0"
-                    :disabled="player.currentSong?.id !== song.id"
-                    class="flex-1 h-1 bg-muted rounded-full appearance-none cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-0"
-                    @input="handleSeek(song, $event)"
-                  />
+                  <div class="flex-1 relative h-2 flex items-center">
+                    <div class="absolute inset-0 bg-muted rounded-full" />
+                    <div 
+                      class="absolute left-0 h-full bg-primary rounded-full transition-all"
+                      :style="{ 
+                        width: player.currentSong?.id === song.id 
+                          ? `${(player.currentTime / song.analysis.durationSeconds) * 100}%` 
+                          : '0%' 
+                      }"
+                    />
+                    <input
+                      type="range"
+                      :min="0"
+                      :max="song.analysis.durationSeconds"
+                      :step="0.1"
+                      :value="player.currentSong?.id === song.id ? player.currentTime : 0"
+                      :disabled="player.currentSong?.id !== song.id"
+                      class="absolute inset-0 w-full appearance-none bg-transparent cursor-pointer disabled:cursor-not-allowed [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:shadow [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:shadow [&::-moz-range-thumb]:border-0"
+                      @input="handleSeek(song, $event)"
+                    />
+                  </div>
                   <span class="text-xs text-muted tabular-nums min-w-[2.5rem]">
                     {{ formatDuration(song.analysis.durationSeconds) }}
                   </span>

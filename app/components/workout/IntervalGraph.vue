@@ -138,13 +138,11 @@ const usedZones = computed(() => {
               }"
             />
             
-            <!-- Cadence label on bar -->
+            <!-- Cadence label above bar -->
             <div 
               v-if="bar.cadence"
-              class="absolute left-1/2 -translate-x-1/2 font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] whitespace-nowrap"
-              :class="bar.heightPercent > 25 ? 'text-white' : 'text-foreground'"
+              class="absolute left-1/2 -translate-x-1/2 -top-5 font-medium whitespace-nowrap text-gray-700 dark:text-gray-200"
               :style="{ 
-                top: bar.heightPercent > 25 ? '8px' : '-20px',
                 fontSize: bar.widthPercent < 8 ? '10px' : '12px'
               }"
             >

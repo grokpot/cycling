@@ -28,39 +28,42 @@ export class SoundTouchStretcher {
     soundtouch.tempo = rate
     soundtouch.pitch = 1.0
 
-    // Wrap input buffer in WebAudioBufferSource (expected by SimpleFilter)
+    // Use SimpleFilter with WebAudioBufferSource
     const source = new WebAudioBufferSource(input)
     const filter = new SimpleFilter(source, soundtouch)
 
     const channels = input.numberOfChannels
-    const expectedOutputFrames = Math.ceil(input.length / rate)
+    const expectedOutputFrames = Math.ceil(input.length / rate) + 4096
     
-    // Allocate output arrays for each channel
-    const outputData: Float32Array[] = [
-      new Float32Array(expectedOutputFrames),
-      new Float32Array(expectedOutputFrames)
-    ]
+    // Allocate oversized output buffers
+    const leftOutput = new Float32Array(expectedOutputFrames)
+    const rightOutput = new Float32Array(expectedOutputFrames)
     
-    // Extract processed samples using SimpleFilter
+    // Extract using SimpleFilter (handles interleaved stereo)
     let totalFramesExtracted = 0
-    const extractBuffer = new Float32Array(4096 * 2) // Interleaved stereo
+    const extractBuffer = new Float32Array(4096 * 2)
     
-    while (totalFramesExtracted < expectedOutputFrames) {
-      const framesToExtract = Math.min(4096, expectedOutputFrames - totalFramesExtracted)
-      const framesExtracted = filter.extract(extractBuffer, framesToExtract)
-      
+    // Extract in chunks until exhausted
+    for (let attempt = 0; attempt < 1000 && totalFramesExtracted < expectedOutputFrames; attempt++) {
+      const framesExtracted = filter.extract(extractBuffer, 4096)
       if (framesExtracted === 0) break
       
-      // Deinterleave stereo to separate channels
+      // Deinterleave: extractBuffer is [L0, R0, L1, R1, ...]
       for (let i = 0; i < framesExtracted; i++) {
-        outputData[0][totalFramesExtracted + i] = extractBuffer[i * 2]      // Left
-        outputData[1][totalFramesExtracted + i] = extractBuffer[i * 2 + 1]  // Right
+        const interleavedIndex = i * 2
+        leftOutput[totalFramesExtracted + i] = extractBuffer[interleavedIndex]
+        rightOutput[totalFramesExtracted + i] = extractBuffer[interleavedIndex + 1]
       }
       
       totalFramesExtracted += framesExtracted
     }
 
     console.info(`SoundTouch: Processed ${input.length} → ${totalFramesExtracted} frames at tempo ${rate.toFixed(3)}`)
+
+    if (totalFramesExtracted === 0) {
+      console.warn('SoundTouch produced zero output frames - returning silence')
+      return this.ctx.createBuffer(channels, 1, input.sampleRate)
+    }
 
     // Create output AudioBuffer
     const output = this.ctx.createBuffer(
@@ -69,9 +72,9 @@ export class SoundTouchStretcher {
       input.sampleRate
     )
 
-    output.getChannelData(0).set(outputData[0].slice(0, totalFramesExtracted))
+    output.getChannelData(0).set(leftOutput.subarray(0, totalFramesExtracted))
     if (channels > 1) {
-      output.getChannelData(1).set(outputData[1].slice(0, totalFramesExtracted))
+      output.getChannelData(1).set(rightOutput.subarray(0, totalFramesExtracted))
     }
 
     return output
