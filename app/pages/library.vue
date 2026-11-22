@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { analyzeAudio } from '~/audio/analyze'
+import { formatDuration } from '#shared/format'
 import { 
   getFolderHandle, 
   setFolderHandle, 
@@ -88,6 +89,11 @@ async function analyzeSong(song: Song) {
 async function toggleBan(song: Song) {
   song.banned = !song.banned
   await store.saveSong(song)
+  await refresh()
+}
+
+async function deleteSong(id: string) {
+  await store.deleteSong(id)
   await refresh()
 }
 
@@ -186,34 +192,61 @@ const columns = [
             description="This browser doesn't support folder access. Use Upload Files instead."
           />
         </div>
-    
-    <template v-if="songs.length > 0">
-      <div class="flex items-center justify-between">
-        <p class="text-sm text-muted">
-          {{ songs.length }} {{ songs.length === 1 ? 'track' : 'tracks' }}.
-          Analyze tracks from your folder before the planner can match them to a cadence.
-        </p>
-      </div>
-      <UTable :columns="columns" :data="songs">
-        <template #actions-cell="{ row }">
-          <div class="flex gap-1 justify-end">
-            <UButton
-              size="xs"
-              variant="soft"
-              :loading="analyzing === row.original.id"
-              label="Analyze"
-              @click="analyzeSong(row.original as Song)"
-            />
-            <UButton
-              size="xs"
-              variant="soft"
-              :color="row.original.banned ? 'warning' : 'neutral'"
-              :label="row.original.banned ? 'Unban' : 'Ban'"
-              @click="toggleBan(row.original as Song)"
-            />
+        
+        <div v-if="songs.length > 0" class="space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="text-caption text-muted">
+              {{ songs.length }} {{ songs.length === 1 ? 'song' : 'songs' }}
+            </div>
           </div>
-        </template>
-      </UTable>
-    </template>
+          
+          <UCard 
+            v-for="song in songs" 
+            :key="song.id"
+            class="hover:bg-accented/5 transition-colors"
+          >
+            <div class="flex justify-between items-center gap-4">
+              <div class="flex-1 min-w-0">
+                <div class="font-medium truncate">
+                  {{ song.name }}
+                </div>
+                <div class="text-sm text-muted mt-0.5">
+                  <template v-if="song.analysis">
+                    {{ song.analysis.bpm }} BPM · {{ formatDuration(song.analysis.durationSeconds) }}
+                  </template>
+                  <template v-else>
+                    Not analyzed yet
+                  </template>
+                </div>
+              </div>
+              <div class="flex items-center gap-3 shrink-0">
+                <UButton
+                  v-if="!song.analysis && song.fileKey"
+                  variant="soft"
+                  size="sm"
+                  label="Analyze"
+                  :loading="analyzing === song.id"
+                  @click="analyzeSong(song)"
+                />
+                <UFormField v-if="song.analysis" label="Active" class="text-xs">
+                  <USwitch
+                    :model-value="!song.banned"
+                    @update:model-value="toggleBan(song)"
+                  />
+                </UFormField>
+                <UButton
+                  variant="ghost"
+                  color="error"
+                  icon="i-lucide-trash-2"
+                  size="sm"
+                  aria-label="Delete song"
+                  @click="deleteSong(song.id)"
+                />
+              </div>
+            </div>
+          </UCard>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

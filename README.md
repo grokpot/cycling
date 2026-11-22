@@ -5,8 +5,8 @@ Nuxt 5 web app for structured indoor rides with music planning, Web Bluetooth tr
 ## Setup
 
 ```bash
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 ## Demo data
@@ -16,8 +16,8 @@ Click "Load demo data" on the workout list to seed a sample 30-minute interval w
 ## Checks
 
 ```bash
-npm test
-npm run build
+bun test
+bun run build
 ```
 
 Product rules live in `docs/product.md`. Implementation notes live in `docs/implementation.md`.

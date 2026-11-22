@@ -20,7 +20,6 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.65.1",
-    "puppeteer": "^25.18.1",
     "vitest": "^5.1.1"
   }
 }

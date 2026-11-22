@@ -14,6 +14,14 @@ export default defineNuxtConfig({
   alias: {
     '#shared': sharedDir,
   },
+  vite: {
+    optimizeDeps: {
+      include: ['soundtouchjs'],
+    },
+  },
+  build: {
+    transpile: ['soundtouchjs'],
+  },
   nitro: {
     alias: {
       '#shared': sharedDir,

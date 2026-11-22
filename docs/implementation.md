@@ -253,7 +253,7 @@ The audio core loop uses **SoundTouchJS** (MIT license) for pitch-preserving tim
 
 ### Quick verification
 
-1. Start dev server: `npm run dev`
+1. Start dev server: `bun run dev`
 2. Open Chrome/Edge at `http://localhost:3000`
 3. Click "Start demo ride" on welcome screen
 4. Click "Start" on pre-ride plan
