@@ -201,7 +201,7 @@ const option = computed(() => {
           const start = api.value(0)
           const end = api.value(1)
           const bpm = api.value(2)
-          const name = params.data.name
+          const name = params.data?.name ?? ''
 
           const startPx = api.coord([start, 0])
           const endPx = api.coord([end, 0])
@@ -283,7 +283,7 @@ const option = computed(() => {
           const [start, end, ftpPct, cadence] = params.value
           return `${Math.round(ftpPct)}% FTP<br/>${cadence ? cadence + ' RPM<br/>' : ''}${formatDuration(end - start)}`
         }
-        return params.data.name
+        return params.data?.name ?? ''
       },
     },
   }
