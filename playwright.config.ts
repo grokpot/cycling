@@ -8,9 +8,12 @@ export default defineConfig({
   retries: 0,
   workers: 1,
   reporter: 'list',
+  timeout: 120000,
   use: {
     baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
+    actionTimeout: 15000,
+    navigationTimeout: 15000,
     launchOptions: {
       args: [
         '--autoplay-policy=no-user-gesture-required',
@@ -25,10 +28,10 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: true,
-    timeout: 120000,
-  },
+  // webServer: {
+  //   command: 'npm run dev',
+  //   url: 'http://localhost:3000',
+  //   reuseExistingServer: true,
+  //   timeout: 120000,
+  // },
 })

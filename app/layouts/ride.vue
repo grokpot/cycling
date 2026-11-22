@@ -1,11 +1,11 @@
 <template>
-  <div class="ride-surface min-h-dvh bg-white text-black">
+  <div class="ride-surface min-h-dvh bg-primary text-primary">
     <slot />
   </div>
 </template>
 
 <style scoped>
 .ride-surface {
-  color-scheme: light;
+  color-scheme: dark;
 }
 </style>
