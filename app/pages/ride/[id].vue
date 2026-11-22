@@ -23,7 +23,7 @@ const controlOpen = ref(false)
 const deviceOpen = ref(false)
 const deviceError = ref<string | null>(null)
 
-const ride = useRide(workout, plan, profile)
+const ride = useRide(workout, plan, profile, songs)
 
 // Keyboard shortcuts
 function handleKeydown(e: KeyboardEvent) {
@@ -275,6 +275,22 @@ watch(controlOpen, (open) => {
     </div>
 
     <footer class="flex flex-col items-center gap-2 pt-2 flex-shrink-0">
+      <div class="flex items-center gap-2">
+        <UBadge 
+          v-if="ride.audioReady.value" 
+          color="success" 
+          variant="subtle"
+        >
+          Audio ready
+        </UBadge>
+        <UBadge 
+          v-else 
+          color="neutral" 
+          variant="subtle"
+        >
+          Loading audio...
+        </UBadge>
+      </div>
       <UButton
         label="Download .fit"
         variant="ghost"

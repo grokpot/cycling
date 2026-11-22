@@ -1,5 +1,5 @@
 import { computed, onUnmounted, ref, shallowRef, watch, type Ref } from 'vue'
-import type { Cue, Plan, Profile, RideSample, TrainerSample, Workout } from '#shared/types'
+import type { Cue, Plan, Profile, RideSample, Song, TrainerSample, Workout } from '#shared/types'
 import { resolveWatts } from '#shared/targets'
 import type { TrainerPort } from '~/device/trainer'
 import { createSimulator } from '~/device/trainer'
@@ -7,6 +7,7 @@ import { createHeartRateSimulator, type HeartRatePort } from '~/device/heart-rat
 import { createFanSimulator } from '~/device/fan'
 import type { FanMode } from '~/device/fan'
 import { AudioMixer } from '~/audio/mixer'
+import { generateDemoAudioBuffers } from '~/audio/procedural-audio'
 
 export interface RidePiece {
   cue: Cue
@@ -19,11 +20,13 @@ export function useRide(
   workout: Ref<Workout | null>,
   plan: Ref<Plan | null>,
   profile: Ref<Profile | null>,
+  songs: Ref<Song[]>,
 ) {
   const trainer = shallowRef<TrainerPort>(createSimulator())
   const trainerConnected = useState('trainer-connected', () => true)
   const useSimulator = useState('use-simulator', () => true)
   const mixer = shallowRef(new AudioMixer())
+  const audioReady = ref(false)
 
   const sample = ref<TrainerSample>({
     watts: 0,
@@ -163,6 +166,38 @@ export function useRide(
     })
   }
 
+  async function loadAudio() {
+    if (!plan.value || audioReady.value) {
+      return
+    }
+
+    const ctx = new AudioContext()
+    
+    // Generate procedural audio for demo songs
+    const demoBuffers = generateDemoAudioBuffers(ctx)
+    for (const [id, buffer] of demoBuffers) {
+      mixer.value.loadBuffer(id, buffer)
+    }
+
+    // Load uploaded audio blobs
+    const { getAudioBlob } = await import('~/repositories/workout-store')
+    for (const song of songs.value) {
+      if (song.source === 'folder' && song.id.startsWith('upload-')) {
+        const blob = await getAudioBlob(song.id)
+        if (blob) {
+          const arrayBuffer = await blob.arrayBuffer()
+          const buffer = await ctx.decodeAudioData(arrayBuffer)
+          mixer.value.loadBuffer(song.id, buffer)
+        }
+      }
+    }
+
+    // Schedule all cues
+    mixer.value.scheduleCues(plan.value.cues, songs.value)
+    
+    audioReady.value = true
+  }
+
   function startRide() {
     if (started || !trainerConnected.value || pieces.value.length === 0) {
       return
@@ -174,6 +209,11 @@ export function useRide(
     rafId = requestAnimationFrame(tick)
     subscribeTrainer()
     unsubHr = heartRatePort.subscribe(() => {})
+    
+    // Start audio
+    if (audioReady.value) {
+      mixer.value.start()
+    }
   }
 
   function pauseRide() {
@@ -256,9 +296,10 @@ export function useRide(
   }
 
   watch(
-    () => [workout.value, plan.value, profile.value] as const,
-    () => {
-      if (workout.value && plan.value && profile.value) {
+    () => [workout.value, plan.value, profile.value, songs.value] as const,
+    async () => {
+      if (workout.value && plan.value && profile.value && songs.value.length > 0) {
+        await loadAudio()
         startRide()
       }
     },
@@ -268,6 +309,7 @@ export function useRide(
   onUnmounted(() => {
     stopRide()
     void trainer.value.disconnect()
+    mixer.value.close()
   })
 
   return {
@@ -299,5 +341,6 @@ export function useRide(
     setFanMode,
     rideSamples,
     beatPulse,
+    audioReady,
   }
 }

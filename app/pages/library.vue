@@ -1,14 +1,22 @@
 <script setup lang="ts">
 import { analyzeAudio } from '~/audio/analyze'
-import { getFolderHandle, setFolderHandle, useWorkoutStore } from '~/repositories/workout-store'
+import { 
+  getFolderHandle, 
+  setFolderHandle, 
+  useWorkoutStore, 
+  saveAudioBlob,
+  getAudioBlob 
+} from '~/repositories/workout-store'
 import type { Song } from '#shared/types'
 
 definePageMeta({ layout: 'default' })
 
 const store = useWorkoutStore()
+const toast = useToast()
 const songs = ref<Song[]>([])
 const hasFolder = ref(false)
 const analyzing = ref<string | null>(null)
+const uploading = ref(false)
 const pickerMissing = ref(false)
 
 const FOLDER_KEY = 'main'
@@ -83,8 +91,59 @@ async function toggleBan(song: Song) {
   await refresh()
 }
 
+async function uploadFiles(files: File[] | File | null) {
+  const fileList = Array.isArray(files) ? files : files ? [files] : []
+  if (fileList.length === 0) {
+    return
+  }
+
+  uploading.value = true
+  let count = 0
+
+  try {
+    for (const file of fileList) {
+      if (!/\.(mp3|flac|aac|m4a|wav)$/i.test(file.name)) {
+        continue
+      }
+
+      const songId = `upload-${file.name}-${Date.now()}-${count++}`
+      const arrayBuffer = await file.arrayBuffer()
+
+      // Analyze
+      const analysis = await analyzeAudio(arrayBuffer)
+
+      // Store blob
+      await saveAudioBlob(songId, file)
+
+      // Save song
+      const song: Song = {
+        id: songId,
+        name: file.name,
+        source: 'folder',
+        durationSeconds: analysis.durationSeconds,
+        banned: false,
+        genres: [],
+        energy: analysis.energy,
+        analysis,
+      }
+      await store.saveSong(song)
+    }
+
+    toast.add({
+      title: 'Files uploaded',
+      description: `Analyzed ${count} ${count === 1 ? 'track' : 'tracks'}`,
+      color: 'success',
+    })
+
+    await refresh()
+  } finally {
+    uploading.value = false
+  }
+}
+
 const columns = [
   { accessorKey: 'name', header: 'Track' },
+  { accessorKey: 'source', header: 'Source' },
   { accessorKey: 'analysis.bpm', header: 'BPM' },
   { accessorKey: 'energy', header: 'Energy' },
   { id: 'actions', header: '' },
@@ -101,21 +160,35 @@ const columns = [
       description="The app includes 5 demo songs with tempo analysis. Test the full workflow with the demo workout on the main page. Add your own tracks by choosing a music folder below."
     />
     
-    <div class="space-y-2">
-      <p class="text-sm text-muted">
-        Tracks stay in the folder you pick. Tempo analysis is saved in the app, not beside the files.
-      </p>
-      <UButton
-        label="Choose a music folder"
-        icon="i-lucide-folder-open"
-        @click="pickFolder"
+    <div class="space-y-3">
+      <div class="flex flex-wrap gap-2">
+        <UButton
+          label="Choose a music folder"
+          icon="i-lucide-folder-open"
+          variant="soft"
+          @click="pickFolder"
+        />
+        <UFileUpload
+          accept=".mp3,.flac,.aac,.m4a,.wav"
+          multiple
+          label="Upload audio files"
+          icon="i-lucide-upload"
+          :loading="uploading"
+          @update:model-value="uploadFiles"
+        />
+      </div>
+      <UAlert
+        color="info"
+        variant="soft"
+        title="Two ways to add music"
+        description="Choose folder: reads files in place (Chrome/Edge desktop). Upload files: copies to app storage (works everywhere, including Android)."
       />
       <UAlert
         v-if="pickerMissing"
         color="warning"
         variant="soft"
-        title="This browser cannot link a folder"
-        description="Folder access needs Chrome or Edge. The reference device is Android Chrome. Demo songs work without folder access."
+        title="Folder picker unavailable"
+        description="This browser does not support folder access. Use Upload files instead."
       />
     </div>
     
