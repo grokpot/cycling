@@ -11,9 +11,16 @@ const store = useWorkoutStore()
 const router = useRouter()
 const toast = useToast()
 const workouts = ref<Workout[]>([])
+const isFirstVisit = useState('first-visit', () => true)
 
 async function load() {
   workouts.value = await store.listWorkouts()
+  
+  // Redirect to welcome if first visit and no workouts
+  if (isFirstVisit.value && workouts.value.length === 0) {
+    isFirstVisit.value = false
+    await router.push('/welcome')
+  }
 }
 
 onMounted(load)
