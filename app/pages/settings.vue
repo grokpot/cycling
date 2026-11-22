@@ -161,5 +161,25 @@ function updateRpe(rpe: number, pct: number) {
 
       <UButton type="submit" label="Save" />
     </UForm>
+
+    <section class="space-y-3 pt-6 border-t border-hairline">
+      <h2 class="text-xs uppercase tracking-wide text-muted">
+        Export
+      </h2>
+      <p class="text-sm text-muted">
+        Export ride data after completing a workout. The .fit file includes power, cadence, and heart rate samples.
+      </p>
+      <div class="text-sm text-muted">
+        <p>To download ride data:</p>
+        <ol class="list-decimal list-inside mt-2 space-y-1">
+          <li>Complete a workout on the ride screen</li>
+          <li>Use the browser console: <code class="text-xs bg-surface px-1 py-0.5 rounded">downloadFit()</code></li>
+          <li>The .fit file will download automatically</li>
+        </ol>
+        <p class="mt-3 text-xs">
+          Note: Automatic ride history tracking is planned for a future update.
+        </p>
+      </div>
+    </section>
   </div>
 </template>
