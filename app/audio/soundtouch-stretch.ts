@@ -1,9 +1,9 @@
 /**
- * Pitch-preserving time stretch using SoundTouchJS core directly.
- * Uses SoundTouch, tempo, inputBuffer.putSamples, process, outputBuffer.receiveSamples.
+ * Pitch-preserving time stretch using SoundTouchJS.
+ * Uses SimpleFilter for processing.
  */
 
-import { SoundTouch } from 'soundtouchjs'
+import { SoundTouch, SimpleFilter, WebAudioBufferSource } from 'soundtouchjs'
 
 export class SoundTouchStretcher {
   private ctx: AudioContext | OfflineAudioContext
@@ -28,48 +28,41 @@ export class SoundTouchStretcher {
       soundtouch.tempo = tempo
       soundtouch.pitch = 1.0
 
+      const source = new WebAudioBufferSource(input)
+      const filter = new SimpleFilter(source, soundtouch)
+
       const channels = input.numberOfChannels
       const sampleRate = input.sampleRate
+      const expectedOutputFrames = Math.ceil(input.length / tempo) + 8192
 
       console.info(`SoundTouch: stretching ${input.length} frames at tempo ${tempo.toFixed(3)}`)
 
-      const leftIn = input.getChannelData(0)
-      const rightIn = channels > 1 ? input.getChannelData(1) : leftIn
-
-      const interleavedInput = new Float32Array(input.length * 2)
-      for (let i = 0; i < input.length; i++) {
-        interleavedInput[i * 2] = leftIn[i]
-        interleavedInput[i * 2 + 1] = rightIn[i]
-      }
-
-      soundtouch.inputBuffer.putSamples(interleavedInput, 0, input.length)
-
-      soundtouch.flush()
-
       const outputChunks: Float32Array[] = []
-      let totalOutputSamples = 0
-      const chunkSize = 4096
+      let totalOutputFrames = 0
+      const extractBuffer = new Float32Array(8192 * 2)
+      let iterations = 0
+      const maxIterations = Math.ceil(expectedOutputFrames / 4096) + 50
 
-      while (true) {
-        const chunk = new Float32Array(chunkSize * 2)
-        const receivedSamples = soundtouch.outputBuffer.receiveSamples(chunk, chunkSize)
+      while (iterations < maxIterations) {
+        const framesExtracted = filter.extract(extractBuffer, 4096)
         
-        if (receivedSamples === 0) {
+        if (framesExtracted === 0) {
           break
         }
 
-        outputChunks.push(chunk.slice(0, receivedSamples * 2))
-        totalOutputSamples += receivedSamples
+        outputChunks.push(extractBuffer.slice(0, framesExtracted * 2))
+        totalOutputFrames += framesExtracted
+        iterations++
       }
 
-      if (totalOutputSamples === 0) {
-        console.warn(`SoundTouch produced no output - falling back to unstretched audio`)
+      if (totalOutputFrames === 0 || iterations >= maxIterations) {
+        console.warn(`SoundTouch produced no output (${totalOutputFrames} frames, ${iterations} iterations) - falling back`)
         return input
       }
 
-      console.info(`SoundTouch: produced ${totalOutputSamples} frames`)
+      console.info(`SoundTouch: produced ${totalOutputFrames} frames in ${iterations} iterations`)
 
-      const interleavedOutput = new Float32Array(totalOutputSamples * 2)
+      const interleavedOutput = new Float32Array(totalOutputFrames * 2)
       let offset = 0
       for (const chunk of outputChunks) {
         interleavedOutput.set(chunk, offset)
@@ -89,14 +82,14 @@ export class SoundTouchStretcher {
         return input
       }
 
-      const output = this.ctx.createBuffer(channels, totalOutputSamples, sampleRate)
+      const output = this.ctx.createBuffer(channels, totalOutputFrames, sampleRate)
       const leftOut = output.getChannelData(0)
       const rightOut = channels > 1 ? output.getChannelData(1) : leftOut
 
-      for (let i = 0; i < totalOutputSamples; i++) {
-        leftOut[i] = interleavedOutput[i * 2]
+      for (let i = 0; i < totalOutputFrames; i++) {
+        leftOut[i] = interleavedOutput[i * 2] ?? 0
         if (channels > 1) {
-          rightOut[i] = interleavedOutput[i * 2 + 1]
+          rightOut[i] = interleavedOutput[i * 2 + 1] ?? 0
         }
       }
 
