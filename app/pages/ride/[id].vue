@@ -242,6 +242,13 @@ watch(controlOpen, (open) => {
         @seek="ride.seekTo"
       />
 
+      <RideSongLane
+        :plan="plan"
+        :songs="songs"
+        :elapsed-ms="ride.elapsedMs.value"
+        @seek="ride.seekTo"
+      />
+
       <RideIntervalBar
         :piece-remaining="ride.formatMs(ride.remainingPieceMs())"
         :line="intervalLine"
