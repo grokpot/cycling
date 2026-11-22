@@ -101,30 +101,49 @@ export class AudioMixer {
 
         console.info(`Cue ${cue.pieceIndex}: ${song.name} - ${song.analysis.bpm} BPM → ${targetBpm} BPM (tempo: ${tempo.toFixed(3)})`)
 
-        // Stretch the buffer
-        const stretchedBuffer = this.stretcher.stretch(originalBuffer, tempo)
-
-        // Extract segment from inBeat to outBeat
-        const beatDuration = 60 / targetBpm
-        const startSample = Math.floor(cue.inBeat * beatDuration * this.ctx.sampleRate)
-        const endSample = Math.floor(cue.outBeat * beatDuration * this.ctx.sampleRate)
-        const segmentLength = Math.min(
+        // Extract segment BEFORE stretching (using original BPM)
+        const originalBeatDuration = 60 / song.analysis.bpm
+        const startSample = Math.floor(cue.inBeat * originalBeatDuration * this.ctx.sampleRate)
+        const endSample = Math.floor(cue.outBeat * originalBeatDuration * this.ctx.sampleRate)
+        const originalSegmentLength = Math.min(
           endSample - startSample,
-          stretchedBuffer.length - startSample,
-          Math.floor(cue.durationSeconds * this.ctx.sampleRate),
+          originalBuffer.length - startSample
         )
 
-        const segmentBuffer = this.ctx.createBuffer(
-          stretchedBuffer.numberOfChannels,
-          segmentLength,
+        const originalSegment = this.ctx.createBuffer(
+          originalBuffer.numberOfChannels,
+          originalSegmentLength,
           this.ctx.sampleRate,
         )
 
-        for (let ch = 0; ch < stretchedBuffer.numberOfChannels; ch++) {
-          const src = stretchedBuffer.getChannelData(ch)
-          const dest = segmentBuffer.getChannelData(ch)
-          for (let i = 0; i < segmentLength; i++) {
+        for (let ch = 0; ch < originalBuffer.numberOfChannels; ch++) {
+          const src = originalBuffer.getChannelData(ch)
+          const dest = originalSegment.getChannelData(ch)
+          for (let i = 0; i < originalSegmentLength; i++) {
             dest[i] = src[startSample + i] ?? 0
+          }
+        }
+
+        // Now stretch the extracted segment
+        const stretchedSegment = this.stretcher.stretch(originalSegment, tempo)
+
+        // Use the stretched segment, truncate if needed
+        const finalLength = Math.min(
+          stretchedSegment.length,
+          Math.floor(cue.durationSeconds * this.ctx.sampleRate)
+        )
+
+        const segmentBuffer = this.ctx.createBuffer(
+          stretchedSegment.numberOfChannels,
+          finalLength,
+          this.ctx.sampleRate,
+        )
+
+        for (let ch = 0; ch < stretchedSegment.numberOfChannels; ch++) {
+          const src = stretchedSegment.getChannelData(ch)
+          const dest = segmentBuffer.getChannelData(ch)
+          for (let i = 0; i < finalLength; i++) {
+            dest[i] = src[i] ?? 0
           }
         }
 
