@@ -4,7 +4,7 @@ import type { Song, Workout } from '#shared/types'
 
 export function createDemoWorkout(): Workout {
   return {
-    id: 'demo-interval-workout',
+    id: 'e9ffe1a8-9a6e-479e-b4a4-2c43e2df5e7a',
     name: 'Demo: Audio Verification Test (15 min)',
     source: 'builder',
     createdAt: new Date().toISOString(),

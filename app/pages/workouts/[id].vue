@@ -230,7 +230,15 @@ async function startRide() {
     <div class="workout-content">
       <div class="workout-container">
         <!-- Workout visualization -->
-        <WorkoutEChartsGraph :workout="workout" :profile="profile" :intensity-scale="intensityScale" :plan="plan?.cues?.length ? plan : undefined" :songs="songs" />
+        <WorkoutEChartsGraph 
+          :workout="workout" 
+          :profile="profile" 
+          :intensity-scale="intensityScale" 
+          :plan="plan?.cues?.length ? plan : undefined" 
+          :songs="songs"
+          interactive
+          @seek="(ms) => console.info('Seek to', ms)"
+        />
 
         <!-- Workout stats -->
         <div class="stats-grid">

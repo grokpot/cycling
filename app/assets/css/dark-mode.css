@@ -1,0 +1,56 @@
+/** Dark mode overrides for Nuxt UI components */
+
+/* Force dark mode globally */
+html {
+  color-scheme: dark;
+}
+
+/* Card components - dark surface */
+[class*="Card"] {
+  background-color: var(--bg-surface) !important;
+  border-color: var(--border) !important;
+}
+
+/* Button variants for dark mode */
+button[class*="soft"],
+button[class*="ghost"] {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: var(--text-primary) !important;
+}
+
+button[class*="soft"]:hover,
+button[class*="ghost"]:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Page headers */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary) !important;
+}
+
+/* Navbar title */
+nav h1,
+nav[class*="Navbar"] h1,
+[class*="DashboardNavbar"] h1 {
+  color: var(--text-primary) !important;
+}
+
+/* Sidebar active item */
+[class*="NavigationLink"][class*="active"],
+[class*="SidebarLink"][class*="active"] {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Card hover states */
+[class*="Card"]:hover {
+  background-color: var(--bg-surface-hover) !important;
+}
+
+/* Global cursor pointer for interactive elements */
+button,
+a[href],
+[role="button"],
+.cursor-pointer {
+  cursor: pointer !important;
+}

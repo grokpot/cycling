@@ -344,7 +344,7 @@ watch(() => props.elapsedMs, () => {
 </script>
 
 <template>
-  <div>
+  <div :style="{ cursor: interactive ? 'pointer' : 'default' }">
     <VChart
       ref="chartRef"
       :option="option"

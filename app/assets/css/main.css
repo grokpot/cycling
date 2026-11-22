@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
+@import "./dark-mode.css";
 
 /** JetBrains Mono for metrics (self-hosted) */
 @font-face {
