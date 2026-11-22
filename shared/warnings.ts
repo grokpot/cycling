@@ -89,11 +89,11 @@ export function planWarnings(
       const settle =
         next.durationSeconds < SHORT_RECOVERY_SEC
           ? ` The next piece is only ${formatDuration(next.durationSeconds)}, which is shorter than heart rate needs to come down.`
-          : ' Heart rate will still be up. A ramp down over a minute or two is easier to settle into.'
+          : ' Heart rate will still be up.'
       warnings.push({
         tone: 'unrealistic',
         title: 'This recovery is instant',
-        detail: `Step ${i + 1} ends near ${round(from)}% FTP and step ${i + 2} starts at ${round(to)}%.${settle}`,
+        detail: `Effort drops sharply from hard to easy in one step.${settle} A ramp down over a minute or two is easier to settle into.`,
       })
     } else if (from === null || to === null) {
       const wFrom = resolveWatts(prev, profile, 100, true)
@@ -107,7 +107,7 @@ export function planWarnings(
         warnings.push({
           tone: 'unrealistic',
           title: 'This recovery is instant',
-          detail: `Power drops from ${wFrom} W to ${wTo} W in one step. Heart rate will not fall that fast. A short ramp down is easier to hit.`,
+          detail: `Power drops sharply in one step. Heart rate will not fall that fast. A short ramp down is easier to hit.`,
         })
       }
     }
@@ -120,8 +120,8 @@ export function planWarnings(
     ) {
       warnings.push({
         tone: 'caution',
-        title: 'This effort starts all at once',
-        detail: `Power jumps from ${round(from)}% FTP to ${round(to)}%. A short ramp gives the trainer and your legs time to meet the target.`,
+        title: 'This one gets hard all at once',
+        detail: `Effort jumps from steady to hard in one step. A short ramp gives the trainer and your legs time to meet the target.`,
       })
     }
 

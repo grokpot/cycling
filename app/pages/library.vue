@@ -9,6 +9,7 @@ import {
   getAudioBlob 
 } from '~/repositories/workout-store'
 import type { Song } from '#shared/types'
+import { useAudioPlayer } from '~/composables/useAudioPlayer'
 
 definePageMeta({ layout: 'default' })
 
@@ -21,6 +22,22 @@ const uploading = ref(false)
 const pickerMissing = ref(false)
 
 const FOLDER_KEY = 'main'
+
+const player = useAudioPlayer()
+
+function togglePlay(song: Song) {
+  if (player.currentSong.value?.id === song.id && player.isPlaying.value) {
+    player.pause()
+  } else {
+    player.play(song)
+  }
+}
+
+function handleSeek(song: Song, event: Event) {
+  const input = event.target as HTMLInputElement
+  const time = parseFloat(input.value)
+  player.seek(time)
+}
 
 async function refresh() {
   songs.value = await store.listSongs()
@@ -205,43 +222,85 @@ const columns = [
             :key="song.id"
             class="hover:bg-accented/5 transition-colors"
           >
-            <div class="flex justify-between items-center gap-4">
-              <div class="flex-1 min-w-0">
-                <div class="font-medium truncate">
-                  {{ song.name }}
+            <div class="space-y-3">
+              <div class="flex justify-between items-start gap-4">
+                <div class="flex-1 min-w-0">
+                  <div class="font-medium truncate">
+                    {{ song.name }}
+                  </div>
+                  <div class="text-sm text-muted mt-0.5">
+                    <template v-if="song.analysis">
+                      {{ song.analysis.bpm }} BPM · {{ formatDuration(song.analysis.durationSeconds) }}
+                    </template>
+                    <template v-else>
+                      Not analyzed yet
+                    </template>
+                  </div>
                 </div>
-                <div class="text-sm text-muted mt-0.5">
-                  <template v-if="song.analysis">
-                    {{ song.analysis.bpm }} BPM · {{ formatDuration(song.analysis.durationSeconds) }}
-                  </template>
-                  <template v-else>
-                    Not analyzed yet
-                  </template>
+                <div class="flex items-center gap-3 shrink-0">
+                  <UButton
+                    v-if="!song.analysis && song.fileKey"
+                    variant="soft"
+                    size="sm"
+                    label="Analyze"
+                    :loading="analyzing === song.id"
+                    @click="analyzeSong(song)"
+                  />
+                  <UFormField v-if="song.analysis" label="Active" class="text-xs">
+                    <USwitch
+                      :model-value="!song.banned"
+                      @update:model-value="toggleBan(song)"
+                    />
+                  </UFormField>
+                  <UButton
+                    variant="ghost"
+                    color="error"
+                    icon="i-lucide-trash-2"
+                    size="sm"
+                    aria-label="Delete song"
+                    @click="deleteSong(song.id)"
+                  />
                 </div>
               </div>
-              <div class="flex items-center gap-3 shrink-0">
+              
+              <!-- Audio player -->
+              <div v-if="song.analysis" class="flex items-center gap-3">
                 <UButton
-                  v-if="!song.analysis && song.fileKey"
+                  :icon="player.currentSong?.id === song.id && player.isPlaying ? 'i-lucide-pause' : 'i-lucide-play'"
+                  size="sm"
                   variant="soft"
-                  size="sm"
-                  label="Analyze"
-                  :loading="analyzing === song.id"
-                  @click="analyzeSong(song)"
+                  :aria-label="player.currentSong?.id === song.id && player.isPlaying ? 'Pause' : 'Play'"
+                  @click="togglePlay(song)"
                 />
-                <UFormField v-if="song.analysis" label="Active" class="text-xs">
-                  <USwitch
-                    :model-value="!song.banned"
-                    @update:model-value="toggleBan(song)"
-                  />
-                </UFormField>
-                <UButton
-                  variant="ghost"
-                  color="error"
-                  icon="i-lucide-trash-2"
-                  size="sm"
-                  aria-label="Delete song"
-                  @click="deleteSong(song.id)"
-                />
+                <div class="flex-1 flex items-center gap-2">
+                  <span class="text-xs text-muted tabular-nums min-w-[2.5rem]">
+                    {{ player.currentSong?.id === song.id ? formatDuration(player.currentTime) : '0:00' }}
+                  </span>
+                  <div class="flex-1 relative h-2 flex items-center">
+                    <div class="absolute inset-0 bg-muted rounded-full" />
+                    <div 
+                      class="absolute left-0 h-full bg-primary rounded-full transition-all"
+                      :style="{ 
+                        width: player.currentSong?.id === song.id 
+                          ? `${(player.currentTime / song.analysis.durationSeconds) * 100}%` 
+                          : '0%' 
+                      }"
+                    />
+                    <input
+                      type="range"
+                      :min="0"
+                      :max="song.analysis.durationSeconds"
+                      :step="0.1"
+                      :value="player.currentSong?.id === song.id ? player.currentTime : 0"
+                      :disabled="player.currentSong?.id !== song.id"
+                      class="absolute inset-0 w-full appearance-none bg-transparent cursor-pointer disabled:cursor-not-allowed [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-primary [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:shadow [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-primary [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white [&::-moz-range-thumb]:shadow [&::-moz-range-thumb]:border-0"
+                      @input="handleSeek(song, $event)"
+                    />
+                  </div>
+                  <span class="text-xs text-muted tabular-nums min-w-[2.5rem]">
+                    {{ formatDuration(song.analysis.durationSeconds) }}
+                  </span>
+                </div>
               </div>
             </div>
           </UCard>

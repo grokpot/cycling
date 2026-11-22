@@ -47,18 +47,12 @@ const startBlocker = computed(() => {
     return 'Connect a trainer, or turn the simulated trainer on.'
   }
   if (needsFtp.value && profile.value.ftp === null) {
-    return 'This workout uses % FTP or zones. Set FTP in Settings before starting.'
-  }
-  if (gaps.value.length > 0) {
-    return 'Resolve each music note before starting.'
-  }
-  if (!planned.value || cues.value.length === 0) {
-    return 'The music plan is empty.'
+    return 'This workout uses zones. Set FTP in Settings before starting.'
   }
   return ''
 })
 
-const canStart = computed(() => startBlocker.value === '' && cues.value.length > 0)
+const canStart = computed(() => startBlocker.value === '')
 
 const cueRows = computed(() =>
   cues.value.map((cue) => ({
@@ -246,87 +240,81 @@ async function startRide() {
             <div>
               <div class="text-caption text-muted">Music</div>
               <div class="text-h3 font-semibold">
-                {{ gaps.length === 0 ? '✓ Ready' : '⚠ Needs setup' }}
+                {{ cueRows.length > 0 ? '✓ Ready' : 'Setting up...' }}
               </div>
             </div>
           </div>
         </UCard>
 
-        <!-- Warnings -->
-        <UAlert
-          v-for="(warning, index) in warnings"
-          :key="index"
-          :color="warning.tone === 'unrealistic' ? 'warning' : 'info'"
-          variant="soft"
-          :title="warning.title"
-          :description="warning.detail"
-        />
-
-        <!-- Music setup (if needed) -->
-        <section v-if="gaps.length > 0" class="space-y-3">
-          <h3 class="text-h3 font-semibold">
-            Music Setup
-          </h3>
-          <UAlert
-            color="info"
-            variant="soft"
-            title="Almost ready"
-            description="A few intervals need songs. Choose how to handle them below."
-          />
-          
-          <div v-for="gap in gaps" :key="gap.pieceIndex" class="space-y-2">
-            <UCard>
-              <div class="space-y-3">
-                <div>
-                  <div class="font-medium">
-                    Interval {{ gap.pieceIndex + 1 }}
-                    <span v-if="gap.lockedRpm" class="text-muted"> · {{ gap.lockedRpm }} RPM target</span>
+        <!-- Suggestions (collapsed) -->
+        <UAccordion
+          v-if="warnings.length > 0 || gaps.length > 0"
+          :items="[{
+            label: `Suggestions (${warnings.length + gaps.length})`,
+            icon: 'i-lucide-lightbulb',
+            defaultOpen: false,
+            slot: 'suggestions'
+          }]"
+        >
+          <template #suggestions>
+            <div class="space-y-3 pt-4">
+              <!-- Warnings -->
+              <UAlert
+                v-for="(warning, index) in warnings"
+                :key="`warning-${index}`"
+                :color="warning.tone === 'unrealistic' ? 'warning' : 'info'"
+                variant="soft"
+                :title="warning.title"
+                :description="warning.detail"
+              />
+              
+              <!-- Music setup gaps -->
+              <div v-for="gap in gaps" :key="`gap-${gap.pieceIndex}`">
+                <UCard>
+                  <div class="space-y-3">
+                    <div>
+                      <div class="font-medium">
+                        Interval {{ gap.pieceIndex + 1 }}
+                        <span v-if="gap.lockedRpm" class="text-muted"> · {{ gap.lockedRpm }} RPM target</span>
+                      </div>
+                      <p class="text-sm text-muted mt-1">
+                        {{ gap.reason === 'missing_cadence' ? 'No target cadence set. Music syncs to your pedaling speed.' : 'No songs in your library match this pace.' }}
+                      </p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                      <UButton
+                        v-if="gap.reason === 'missing_cadence'"
+                        type="button"
+                        size="sm"
+                        variant="soft"
+                        icon="i-lucide-wand-2"
+                        label="Set target cadence"
+                        @click="autoFillCadence"
+                      />
+                      <UButton
+                        v-if="gap.reason === 'no_song'"
+                        type="button"
+                        size="sm"
+                        variant="soft"
+                        icon="i-lucide-library"
+                        label="Add songs"
+                        to="/library"
+                      />
+                      <UButton
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        icon="i-lucide-volume-x"
+                        label="Ride without music"
+                        @click="resolveGap(gap.pieceIndex, 'silence')"
+                      />
+                    </div>
                   </div>
-                  <p class="text-sm text-muted mt-1">
-                    {{ gap.reason === 'missing_cadence' ? 'No target cadence set. Music syncs to your pedaling speed.' : 'No songs in your library match this pace.' }}
-                  </p>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                  <UButton
-                    v-if="gap.reason === 'missing_cadence'"
-                    type="button"
-                    size="sm"
-                    variant="soft"
-                    icon="i-lucide-wand-2"
-                    label="Set target cadence"
-                    @click="autoFillCadence"
-                  />
-                  <UButton
-                    v-if="gap.reason === 'no_song'"
-                    type="button"
-                    size="sm"
-                    variant="soft"
-                    icon="i-lucide-library"
-                    label="Add songs in Library"
-                    to="/library"
-                  />
-                  <UButton
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    icon="i-lucide-volume-x"
-                    label="Silent"
-                    @click="resolveGap(gap.pieceIndex, 'silence')"
-                  />
-                </div>
+                </UCard>
               </div>
-            </UCard>
-          </div>
-        </section>
-
-        <!-- Success state -->
-        <UAlert
-          v-else-if="cueRows.length > 0"
-          color="success"
-          variant="soft"
-          title="Ready to ride"
-          :description="`${cueRows.length} songs queued and synced to your targets.`"
-        />
+            </div>
+          </template>
+        </UAccordion>
 
         <!-- Advanced settings (collapsed by default) -->
         <UAccordion

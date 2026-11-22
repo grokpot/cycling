@@ -67,7 +67,7 @@ describe('planWarnings', () => {
 
   it('cautions when a steady step jumps straight into a hard effort', () => {
     const notes = planWarnings(workout([step(0, 60), step(1, 100)]), profile)
-    expect(notes.map((n) => n.title)).toContain('This effort starts all at once')
+    expect(notes.map((n) => n.title)).toContain('This one gets hard all at once')
   })
 
   it('ignores a small cadence change and flags a large one', () => {
