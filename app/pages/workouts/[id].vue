@@ -307,15 +307,25 @@ async function startRide() {
     <section class="space-y-3">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <h2 class="text-xs uppercase tracking-wide text-muted">
-          Music
+          Music plan
         </h2>
         <UButton
+          v-if="workout.intervals.some(i => i.cadenceLow === null)"
           type="button"
           label="Fill empty cadences"
+          icon="i-lucide-wand-2"
           variant="soft"
           @click="autoFillCadence"
         />
       </div>
+
+      <UAlert
+        v-if="gaps.length === 0 && cueRows.length > 0"
+        color="success"
+        variant="soft"
+        title="Music ready"
+        description="All intervals have songs matched to their cadence targets."
+      />
 
       <div v-for="gap in gaps" :key="gap.pieceIndex" class="space-y-2">
         <UAlert
@@ -330,10 +340,11 @@ async function startRide() {
             type="button"
             size="sm"
             variant="soft"
+            icon="i-lucide-stretch-horizontal"
             label="Allow 16% stretch"
             @click="resolveGap(gap.pieceIndex, 'stretch16')"
           />
-          <UFormField v-if="gap.reason === 'no_song'" label="RPM">
+          <UFormField v-if="gap.reason === 'no_song'" label="New RPM">
             <UInputNumber
               :model-value="gap.lockedRpm ?? 80"
               class="w-28"
@@ -346,6 +357,7 @@ async function startRide() {
             type="button"
             size="sm"
             variant="soft"
+            icon="i-lucide-volume-x"
             label="Ride in silence"
             @click="resolveGap(gap.pieceIndex, 'silence')"
           />
@@ -353,9 +365,12 @@ async function startRide() {
       </div>
 
       <UTable v-if="cueRows.length" :columns="cueColumns" :data="cueRows" />
-      <p v-else-if="gaps.length === 0" class="text-sm text-muted">
-        No songs planned yet. Fill empty cadences, or add tracks in the library.
-      </p>
+      <UEmpty 
+        v-else-if="gaps.length === 0" 
+        icon="i-lucide-music"
+        title="No songs planned yet" 
+        description="Fill empty cadences or add tracks in the library to build a music plan."
+      />
     </section>
 
     <div class="flex flex-wrap items-center gap-3 pt-2">

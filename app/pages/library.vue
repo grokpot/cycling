@@ -94,33 +94,38 @@ const columns = [
 <template>
   <UDashboardNavbar title="Library" />
   <div class="p-4 max-w-3xl space-y-4">
-    <p class="text-sm text-muted">
-      Tracks stay in the folder you pick. Tempo analysis is saved in the app, not beside the files.
-    </p>
-    <UButton
-      label="Choose a music folder"
-      icon="i-lucide-folder-open"
-      @click="pickFolder"
-    />
     <UAlert
-      v-if="pickerMissing"
-      color="warning"
+      color="info"
       variant="soft"
-      title="This browser cannot link a folder"
-      description="Folder access needs Chrome or Edge. The reference device is Android Chrome."
+      title="Demo songs loaded"
+      description="The app includes 5 demo songs with tempo analysis. Test the full workflow with the demo workout on the main page. Add your own tracks by choosing a music folder below."
     />
-    <UEmpty
-      v-if="!hasFolder"
-      icon="i-lucide-folder"
-      title="No music folder yet"
-      description="Pick a folder of your own MP3, FLAC, or AAC files. The ride reads them in place, so the browser has to keep permission for that folder."
-    />
-    <template v-else>
+    
+    <div class="space-y-2">
       <p class="text-sm text-muted">
-        {{ songs.length }} {{ songs.length === 1 ? 'track' : 'tracks' }}.
-        Analyze a track before the planner can match it to a cadence.
-        If the list is empty after a reload, choose the folder again.
+        Tracks stay in the folder you pick. Tempo analysis is saved in the app, not beside the files.
       </p>
+      <UButton
+        label="Choose a music folder"
+        icon="i-lucide-folder-open"
+        @click="pickFolder"
+      />
+      <UAlert
+        v-if="pickerMissing"
+        color="warning"
+        variant="soft"
+        title="This browser cannot link a folder"
+        description="Folder access needs Chrome or Edge. The reference device is Android Chrome. Demo songs work without folder access."
+      />
+    </div>
+    
+    <template v-if="songs.length > 0">
+      <div class="flex items-center justify-between">
+        <p class="text-sm text-muted">
+          {{ songs.length }} {{ songs.length === 1 ? 'track' : 'tracks' }}.
+          Analyze tracks from your folder before the planner can match them to a cadence.
+        </p>
+      </div>
       <UTable :columns="columns" :data="songs">
         <template #actions-cell="{ row }">
           <div class="flex gap-1 justify-end">

@@ -146,41 +146,45 @@ watch(controlOpen, (open) => {
 </script>
 
 <template>
-  <div v-if="workout && plan && profile" class="p-3 space-y-3 max-w-lg mx-auto">
-    <div class="flex items-center justify-between gap-2">
+  <div v-if="workout && plan && profile" class="min-h-dvh flex flex-col p-3 space-y-3 max-w-2xl mx-auto">
+    <header class="flex items-center justify-between gap-2 flex-shrink-0">
       <UButton
         icon="i-lucide-arrow-left"
         variant="ghost"
         color="neutral"
+        aria-label="Leave ride"
         @click="leaveRide"
       />
-      <p class="text-body font-medium truncate">
+      <h1 class="text-body font-medium truncate flex-1 text-center">
         {{ workout.name }}
-      </p>
+      </h1>
       <div class="flex gap-1">
         <UButton
           icon="i-lucide-bluetooth"
           variant="soft"
+          aria-label="Devices"
           @click="deviceOpen = true"
         />
         <UButton
           icon="i-lucide-settings"
           variant="soft"
+          aria-label="Control"
           @click="controlOpen = true"
         />
       </div>
-    </div>
+    </header>
 
-    <div class="grid grid-cols-2 gap-2">
+    <div class="grid grid-cols-2 gap-2 flex-shrink-0">
       <RideMetricCard
-        title="Target power"
+        title="Power"
         :value="ride.sample.value.watts"
-        :caption="`Target: ${ride.targetWatts() ?? '—'}`"
+        :caption="`Target: ${ride.targetWatts() ?? '—'} W`"
       />
       <RideMetricCard
-        title="Target cadence"
+        title="Cadence"
         :value="ride.sample.value.cadence"
-        :caption="`Target: ${ride.targetCadence()}`"
+        :caption="`Target: ${ride.targetCadence()} RPM`"
+        :pulse="ride.beatPulse.value"
       >
         <UProgress
           :model-value="ride.sample.value.cadence"
@@ -190,18 +194,14 @@ watch(controlOpen, (open) => {
         />
       </RideMetricCard>
       <RideMetricCard
-        title="Target heart rate"
+        title="Heart rate"
         :value="ride.sample.value.heartRate"
-        caption="Live"
+        caption="Live BPM"
       />
-      <RideMetricCard title="Target RPE" value="—" caption="Step" />
-      <RideMetricCard
-        title="Workout remaining"
-        :value="ride.formatMs(ride.remainingWorkoutMs())"
-      />
-      <RideMetricCard
-        title="Effort remaining"
+      <RideMetricCard 
+        title="Interval" 
         :value="ride.formatMs(ride.remainingPieceMs())"
+        caption="Remaining"
       />
     </div>
 
@@ -213,19 +213,22 @@ watch(controlOpen, (open) => {
       :total-ms="totalMs"
       :target-watts="ride.targetWatts()"
       :upcoming-labels="upcoming"
+      class="flex-shrink-0"
     />
 
     <RideIntervalBar
       :piece-remaining="ride.formatMs(ride.remainingPieceMs())"
       :line="intervalLine"
       :song-title="songTitle"
+      class="flex-shrink-0"
     />
 
-    <div class="flex items-end justify-between gap-2 pt-2">
+    <div class="flex items-center justify-between gap-2 pt-2 flex-shrink-0">
       <UButton
-        label="Skip interval"
+        label="Skip"
         variant="soft"
         color="neutral"
+        icon="i-lucide-skip-forward"
         @click="ride.skipInterval()"
       />
       <UButton
@@ -234,21 +237,24 @@ watch(controlOpen, (open) => {
         variant="soft"
         color="neutral"
         class="rounded-full"
+        :aria-label="ride.paused.value ? 'Resume' : 'Pause'"
         @click="ride.pauseRide()"
       />
       <UButton
         label="Control"
         variant="soft"
         color="neutral"
+        icon="i-lucide-sliders-horizontal"
         @click="controlOpen = true"
       />
     </div>
 
-    <div class="flex justify-center">
+    <div class="flex justify-center pt-2 flex-shrink-0">
       <UButton
         label="Download .fit"
         variant="ghost"
         size="sm"
+        icon="i-lucide-download"
         @click="downloadFit"
       />
     </div>

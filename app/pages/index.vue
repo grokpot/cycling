@@ -3,11 +3,13 @@ import { formatDuration } from '#shared/format'
 import { parseZwo } from '#shared/zwo'
 import type { Workout } from '#shared/types'
 import { useWorkoutStore } from '~/repositories/workout-store'
+import { createDemoWorkout, createDemoSongs } from '~/utils/demo-data'
 
 definePageMeta({ layout: 'default' })
 
 const store = useWorkoutStore()
 const router = useRouter()
+const toast = useToast()
 const workouts = ref<Workout[]>([])
 
 async function load() {
@@ -37,6 +39,21 @@ async function onZwo(files: File[] | File | null) {
   await store.saveWorkout(workout)
   await load()
 }
+
+async function loadDemoData() {
+  const workout = createDemoWorkout()
+  await store.saveWorkout(workout)
+  const songs = createDemoSongs()
+  for (const song of songs) {
+    await store.saveSong(song)
+  }
+  toast.add({ 
+    title: 'Demo data loaded', 
+    description: 'Added demo workout and 5 demo songs',
+    color: 'success' 
+  })
+  await load()
+}
 </script>
 
 <template>
@@ -52,6 +69,13 @@ async function onZwo(files: File[] | File | null) {
         accept=".zwo"
         label="Import .zwo"
         @update:model-value="onZwo"
+      />
+      <UButton
+        label="Load demo data"
+        icon="i-lucide-lightbulb"
+        variant="soft"
+        color="neutral"
+        @click="loadDemoData"
       />
     </div>
     <UEmpty

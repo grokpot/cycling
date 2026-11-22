@@ -37,6 +37,7 @@ export function useRide(
   const paused = ref(false)
   const pieceIndex = ref(0)
   const rideSamples = ref<RideSample[]>([])
+  const beatPulse = ref(false)
 
   let rafId = 0
   let lastTick = 0
@@ -109,6 +110,18 @@ export function useRide(
         const cur = currentPiece()
         if (cur && pieceElapsedMs() >= cur.durationSeconds * 1000) {
           advancePiece()
+        }
+        
+        // Beat pulse: flash on every beat based on target cadence
+        const rpm = targetCadence()
+        const beatMs = (60 * 1000) / rpm
+        const beatPhase = (elapsedMs.value % beatMs) / beatMs
+        const wasPulsing = beatPulse.value
+        beatPulse.value = beatPhase < 0.1
+        
+        // Trigger animation on beat transition
+        if (beatPulse.value && !wasPulsing) {
+          setTimeout(() => { beatPulse.value = false }, 150)
         }
       }
       lastTick = now
@@ -285,5 +298,6 @@ export function useRide(
     fan,
     setFanMode,
     rideSamples,
+    beatPulse,
   }
 }
