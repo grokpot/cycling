@@ -16,11 +16,10 @@ export class AudioMixer {
   private masterGain: GainNode | null = null
   private audioBuffers: Map<string, AudioBuffer> = new Map()
   private scheduledCues: ScheduledCue[] = []
-  private activeSources: Array<{ source: AudioBufferSourceNode; gain: GainNode; cueIndex: number }> = []
+  private activeSources: Array<{ source: AudioBufferSourceNode; gain: GainNode; stopTime: number }> = []
   private startTime = 0
-  private currentCueIndex = 0
   private paused = false
-  private elapsedAtPause = 0
+  private pauseTime = 0
 
   constructor(ctx?: AudioContext | OfflineAudioContext) {
     if (ctx) {
@@ -171,6 +170,21 @@ export class AudioMixer {
    * Start playback from the beginning.
    */
   start() {
+    this.scheduleAllCues(0)
+  }
+
+  /**
+   * Seek to a specific time in the ride.
+   */
+  seekTo(elapsedSeconds: number) {
+    this.scheduleAllCues(elapsedSeconds)
+  }
+
+  /**
+   * Schedule all cues starting from a given elapsed time.
+   * Stops any currently playing sources and schedules from the target time forward.
+   */
+  private scheduleAllCues(fromElapsedSeconds: number) {
     this.ensureCtx()
     if (!this.ctx || !this.masterGain) {
       console.error('AudioMixer: Failed to initialize AudioContext')
@@ -182,88 +196,104 @@ export class AudioMixer {
       return
     }
 
-    this.stop()
-    this.startTime = this.ctx.currentTime
-    this.currentCueIndex = 0
-    this.elapsedAtPause = 0
+    // Stop all current sources immediately
+    this.stopActiveSources()
 
-    console.info(`AudioMixer: Starting playback from cue 0`)
-    this.playCue(0, 0)
-  }
+    this.startTime = this.ctx.currentTime - fromElapsedSeconds
 
-  /**
-   * Play a specific cue starting at a given offset within that cue.
-   */
-  private playCue(cueIndex: number, offsetSeconds: number) {
-    if (!this.ctx || !this.masterGain) return
-    if (cueIndex >= this.scheduledCues.length) return
+    console.info(`AudioMixer: Scheduling from ${fromElapsedSeconds.toFixed(2)}s`)
 
-    const scheduled = this.scheduledCues[cueIndex]
-    const source = this.ctx.createBufferSource()
-    source.buffer = scheduled.buffer
-
-    const gain = this.ctx.createGain()
-    source.connect(gain)
-    gain.connect(this.masterGain)
-
-    const when = this.ctx.currentTime
-    const duration = scheduled.duration - offsetSeconds
-
-    // Fade in if not the first cue and starting from beginning of cue
-    if (cueIndex > 0 && offsetSeconds === 0) {
-      const crossfadeDuration = Math.min(1, duration)
-      gain.gain.setValueAtTime(0, when)
-      gain.gain.linearRampToValueAtTime(1, when + crossfadeDuration)
-    } else {
-      gain.gain.setValueAtTime(1, when)
-    }
-
-    // Schedule next cue before this one ends
-    const nextCueIndex = cueIndex + 1
-    if (nextCueIndex < this.scheduledCues.length) {
-      const timeUntilNext = duration * 1000
-      setTimeout(() => {
-        this.currentCueIndex = nextCueIndex
-        this.playCue(nextCueIndex, 0)
-      }, timeUntilNext)
-    }
-
-    source.start(when, offsetSeconds, duration)
-    
-    this.activeSources.push({ source, gain, cueIndex })
-    this.currentCueIndex = cueIndex
-
-    console.info(`AudioMixer: Playing cue ${cueIndex} from offset ${offsetSeconds.toFixed(2)}s`)
-  }
-
-  /**
-   * Seek to a specific time in the ride.
-   */
-  seekTo(elapsedSeconds: number) {
-    if (!this.ctx || this.scheduledCues.length === 0) return
-
-    // Find which cue this time falls into
+    // Find first cue to play
     let accumulatedTime = 0
-    let targetCueIndex = 0
-    let offsetInCue = 0
+    let startCueIndex = 0
+    let offsetInFirstCue = 0
 
     for (let i = 0; i < this.scheduledCues.length; i++) {
       const cue = this.scheduledCues[i]
-      if (accumulatedTime + cue.duration > elapsedSeconds) {
-        targetCueIndex = i
-        offsetInCue = elapsedSeconds - accumulatedTime
+      if (accumulatedTime + cue.duration > fromElapsedSeconds) {
+        startCueIndex = i
+        offsetInFirstCue = fromElapsedSeconds - accumulatedTime
         break
       }
       accumulatedTime += cue.duration
     }
 
-    console.info(`AudioMixer: Seeking to ${elapsedSeconds.toFixed(2)}s (cue ${targetCueIndex}, offset ${offsetInCue.toFixed(2)}s)`)
+    // Schedule all cues from startCueIndex forward
+    for (let i = startCueIndex; i < this.scheduledCues.length; i++) {
+      const scheduled = this.scheduledCues[i]
+      const source = this.ctx.createBufferSource()
+      source.buffer = scheduled.buffer
 
-    // Stop current sources
-    this.stopActiveSources()
+      const gain = this.ctx.createGain()
+      source.connect(gain)
+      gain.connect(this.masterGain)
 
-    // Start from target cue
-    this.playCue(targetCueIndex, offsetInCue)
+      // Calculate when this cue should start
+      const cueStartTime = this.startTime + scheduled.startTime
+      const offset = i === startCueIndex ? offsetInFirstCue : 0
+      const actualStartTime = cueStartTime + offset
+      const duration = scheduled.duration - offset
+
+      // Only schedule if it starts in the future or is currently playing
+      if (actualStartTime + duration > this.ctx.currentTime) {
+        const when = Math.max(this.ctx.currentTime, actualStartTime)
+
+        // Crossfade with previous cue
+        const prevIndex = i - 1
+        if (prevIndex >= 0 && i === startCueIndex + 1) {
+          // Crossfade into second cue
+          const crossfadeDuration = Math.min(1, duration)
+          gain.gain.setValueAtTime(0, when)
+          gain.gain.linearRampToValueAtTime(1, when + crossfadeDuration)
+        } else {
+          // Start at full volume
+          gain.gain.setValueAtTime(1, when)
+        }
+
+        // Fade out if there's a next cue
+        const nextIndex = i + 1
+        if (nextIndex < this.scheduledCues.length) {
+          const crossfadeDuration = Math.min(1, duration)
+          const fadeOutStart = when + duration - crossfadeDuration
+          if (fadeOutStart > when) {
+            gain.gain.setValueAtTime(1, fadeOutStart)
+            gain.gain.linearRampToValueAtTime(0, fadeOutStart + crossfadeDuration)
+          }
+        }
+
+        const stopTime = when + duration
+        source.start(when, offset, duration)
+        source.stop(stopTime)
+
+        this.activeSources.push({ source, gain, stopTime })
+
+        // Auto-cleanup after stop
+        source.onended = () => {
+          this.cleanupOldSources()
+        }
+
+        console.info(`AudioMixer: Scheduled cue ${i} at ${when.toFixed(2)} for ${duration.toFixed(2)}s`)
+      }
+    }
+
+    this.cleanupOldSources()
+  }
+
+  /**
+   * Remove sources that have already stopped.
+   */
+  private cleanupOldSources() {
+    if (!this.ctx) return
+
+    const now = this.ctx.currentTime
+    this.activeSources = this.activeSources.filter(({ stopTime }) => stopTime > now)
+  }
+
+  /**
+   * Get current active source count (for testing).
+   */
+  getActiveSourceCount(): number {
+    return this.activeSources.length
   }
 
   /**
@@ -357,7 +387,7 @@ export class AudioMixer {
 
   pause() {
     if (this.ctx && !this.paused) {
-      this.elapsedAtPause = this.ctx.currentTime - this.startTime
+      this.pauseTime = this.ctx.currentTime - this.startTime
       void this.ctx.suspend()
       this.paused = true
     }
@@ -367,8 +397,6 @@ export class AudioMixer {
     if (this.ctx && this.paused) {
       void this.ctx.resume()
       this.paused = false
-      // Adjust start time to account for pause
-      this.startTime = this.ctx.currentTime - this.elapsedAtPause
     }
   }
 
