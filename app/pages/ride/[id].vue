@@ -233,19 +233,14 @@ watch(controlOpen, (open) => {
     </div>
 
     <div class="flex-1 min-h-0 overflow-y-auto space-y-3 mt-3">
-      <WorkoutIntervalGraph
+      <WorkoutEChartsGraph
         :workout="workout"
         :profile="profile"
-        :elapsed-ms="ride.elapsedMs.value"
-        :intensity-scale="plan.intensityScale"
-        interactive
-        @seek="ride.seekTo"
-      />
-
-      <RideSongLane
         :plan="plan"
         :songs="songs"
         :elapsed-ms="ride.elapsedMs.value"
+        :intensity-scale="plan.intensityScale"
+        interactive
         @seek="ride.seekTo"
       />
 
