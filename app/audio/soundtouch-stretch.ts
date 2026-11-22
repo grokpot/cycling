@@ -3,7 +3,7 @@
  * MIT licensed, proven quality.
  */
 
-import { SoundTouch, SimpleFilter } from 'soundtouchjs'
+import { SoundTouch, SimpleFilter, WebAudioBufferSource } from 'soundtouchjs'
 
 export class SoundTouchStretcher {
   private ctx: AudioContext
@@ -30,7 +30,9 @@ export class SoundTouchStretcher {
     // Keep pitch unchanged
     soundtouch.pitch = 1.0
 
-    const filter = new SimpleFilter(input, soundtouch)
+    // Wrap AudioBuffer in WebAudioBufferSource for SimpleFilter
+    const source = new WebAudioBufferSource(input)
+    const filter = new SimpleFilter(source, soundtouch)
 
     // Estimate output length
     const outputLength = Math.ceil(input.length / rate)
@@ -46,21 +48,23 @@ export class SoundTouchStretcher {
     // Process audio
     let samplesRead = 0
     const bufferSize = 4096
+    const extractBuffer = new Float32Array(bufferSize * channels)
     
     while (samplesRead < outputLength) {
-      const samples = filter.extract(bufferSize, samplesRead)
-      if (samples.length === 0) {
+      // Extract interleaved samples
+      const framesExtracted = filter.extract(extractBuffer, bufferSize)
+      if (framesExtracted === 0) {
         break
       }
 
       // Deinterleave samples to channels
-      for (let i = 0; i < samples.length && samplesRead + i < outputLength; i++) {
+      for (let i = 0; i < framesExtracted && samplesRead + i < outputLength; i++) {
         for (let ch = 0; ch < channels; ch++) {
-          outputData[ch][samplesRead + i] = samples[i * channels + ch] ?? 0
+          outputData[ch][samplesRead + i] = extractBuffer[i * channels + ch] ?? 0
         }
       }
 
-      samplesRead += samples.length / channels
+      samplesRead += framesExtracted
     }
 
     // Create output buffer with actual samples read
