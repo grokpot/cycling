@@ -151,46 +151,41 @@ const columns = [
 </script>
 
 <template>
-  <UDashboardNavbar title="Library" />
-  <div class="p-4 max-w-3xl space-y-4">
-    <UAlert
-      color="info"
-      variant="soft"
-      title="Demo songs loaded"
-      description="The app includes 5 demo songs with tempo analysis. Test the full workflow with the demo workout on the main page. Add your own tracks by choosing a music folder below."
-    />
-    
-    <div class="space-y-3">
-      <div class="flex flex-wrap gap-2">
-        <UButton
-          label="Choose a music folder"
-          icon="i-lucide-folder-open"
-          variant="soft"
-          @click="pickFolder"
-        />
-        <UFileUpload
-          accept=".mp3,.flac,.aac,.m4a,.wav"
-          multiple
-          label="Upload audio files"
-          icon="i-lucide-upload"
-          :loading="uploading"
-          @update:model-value="uploadFiles"
-        />
-      </div>
-      <UAlert
-        color="info"
-        variant="soft"
-        title="Two ways to add music"
-        description="Choose folder: reads files in place (Chrome/Edge desktop). Upload files: copies to app storage (works everywhere, including Android)."
-      />
-      <UAlert
-        v-if="pickerMissing"
-        color="warning"
-        variant="soft"
-        title="Folder picker unavailable"
-        description="This browser does not support folder access. Use Upload files instead."
-      />
-    </div>
+  <div class="flex flex-col h-screen">
+    <UDashboardNavbar title="Library" />
+    <div class="flex-1 overflow-y-auto">
+      <div class="p-4 max-w-4xl mx-auto space-y-4">
+        <div class="space-y-3">
+          <div class="flex flex-wrap gap-2">
+            <UButton
+              label="Choose Music Folder"
+              icon="i-lucide-folder-open"
+              @click="pickFolder"
+            />
+            <UFileUpload
+              accept=".mp3,.flac,.aac,.m4a,.wav"
+              multiple
+              label="Upload Files"
+              icon="i-lucide-upload"
+              :loading="uploading"
+              @update:model-value="uploadFiles"
+            />
+          </div>
+          <UAlert
+            v-if="songs.length === 0"
+            color="info"
+            variant="soft"
+            title="Add your music"
+            description="Choose a folder to scan audio files, or upload individual tracks. The app analyzes tempo automatically."
+          />
+          <UAlert
+            v-if="pickerMissing"
+            color="warning"
+            variant="soft"
+            title="Folder picker unavailable"
+            description="This browser doesn't support folder access. Use Upload Files instead."
+          />
+        </div>
     
     <template v-if="songs.length > 0">
       <div class="flex items-center justify-between">
