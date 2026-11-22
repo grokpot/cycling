@@ -256,7 +256,7 @@ watch(controlOpen, (open) => {
       />
     </div>
     
-    <div class="flex items-center justify-between gap-2 pt-3 flex-shrink-0 border-t border-hairline">
+    <div class="flex items-center justify-between gap-2 pt-3 flex-shrink-0">
       <UButton
         label="Skip"
         variant="soft"
