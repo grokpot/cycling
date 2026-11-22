@@ -85,8 +85,10 @@ const musicBpm = computed(() => {
 const intervalLine = computed(() => {
   const rpm = ride.targetCadence()
   const watts = ride.targetWatts() ?? '—'
-  const rpe = '—'
-  return `${rpm} RPM · ${rpe} RPE · ${musicBpm.value} BPM · ${watts} W`
+  const bpm = musicBpm.value
+  
+  // Hide RPE since it's not used in this implementation
+  return `${rpm} RPM · ${bpm} BPM · ${watts} W`
 })
 
 const upcoming = computed(() => {

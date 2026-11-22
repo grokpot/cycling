@@ -79,10 +79,10 @@ export function useRide(
 
   function pieceElapsedMs() {
     let offset = 0
-    for (let i = 0; i < pieceIndex.value; i++) {
-      offset += pieces.value[i].durationSeconds * 1000
+    for (let i = 0; i < pieceIndex.value && i < pieces.value.length; i++) {
+      offset += (pieces.value[i]?.durationSeconds ?? 0) * 1000
     }
-    return elapsedMs.value - offset
+    return Math.max(0, elapsedMs.value - offset)
   }
 
   function remainingWorkoutMs() {
@@ -95,7 +95,9 @@ export function useRide(
     if (!cur) {
       return 0
     }
-    return Math.max(0, cur.durationSeconds * 1000 - pieceElapsedMs())
+    const elapsed = pieceElapsedMs()
+    const remaining = (cur.durationSeconds * 1000) - elapsed
+    return Math.max(0, remaining)
   }
 
   function targetWatts() {
@@ -265,9 +267,9 @@ export function useRide(
     pieceIndex.value = result.pieceIndex
     applyTrainerTarget()
 
-    // TODO: Implement mixer.seekTo(cue, offsetMs) to handle audio seeking
-    // For now, just restart audio from the beginning of the ride
-    // A full implementation would need to reschedule only upcoming cues
+    if (audioReady.value) {
+      mixer.value.seekTo(targetMs / 1000)
+    }
   }
 
   function stopRide() {
