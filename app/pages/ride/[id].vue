@@ -171,7 +171,7 @@ watch(controlOpen, (open) => {
 </script>
 
 <template>
-  <div v-if="workout && plan && profile" class="min-h-dvh flex flex-col p-3 space-y-3 max-w-2xl mx-auto">
+  <div v-if="workout && plan && profile" class="h-dvh flex flex-col p-3 max-w-2xl mx-auto overflow-hidden">
     <header class="flex items-center justify-between gap-2 flex-shrink-0">
       <UButton
         icon="i-lucide-arrow-left"
@@ -199,7 +199,7 @@ watch(controlOpen, (open) => {
       </div>
     </header>
 
-    <div class="grid grid-cols-2 gap-2 flex-shrink-0">
+    <div class="grid grid-cols-2 gap-2 flex-shrink-0 mt-3">
       <RideMetricCard
         title="Power"
         :value="ride.sample.value.watts"
@@ -230,25 +230,25 @@ watch(controlOpen, (open) => {
       />
     </div>
 
-    <RideIntervalGraph
-      :workout="workout"
-      :plan="plan"
-      :profile="profile"
-      :elapsed-ms="ride.elapsedMs.value"
-      :total-ms="totalMs"
-      :target-watts="ride.targetWatts()"
-      :upcoming-labels="upcoming"
-      class="flex-shrink-0"
-    />
+    <div class="flex-1 min-h-0 overflow-y-auto space-y-3 mt-3">
+      <RideIntervalGraph
+        :workout="workout"
+        :plan="plan"
+        :profile="profile"
+        :elapsed-ms="ride.elapsedMs.value"
+        :total-ms="totalMs"
+        :target-watts="ride.targetWatts()"
+        :upcoming-labels="upcoming"
+      />
 
-    <RideIntervalBar
-      :piece-remaining="ride.formatMs(ride.remainingPieceMs())"
-      :line="intervalLine"
-      :song-title="songTitle"
-      class="flex-shrink-0"
-    />
-
-    <div class="flex items-center justify-between gap-2 pt-2 flex-shrink-0">
+      <RideIntervalBar
+        :piece-remaining="ride.formatMs(ride.remainingPieceMs())"
+        :line="intervalLine"
+        :song-title="songTitle"
+      />
+    </div>
+    
+    <div class="flex items-center justify-between gap-2 pt-3 flex-shrink-0 border-t border-hairline">
       <UButton
         label="Skip"
         variant="soft"
@@ -274,7 +274,7 @@ watch(controlOpen, (open) => {
       />
     </div>
 
-    <footer class="flex flex-col items-center gap-2 pt-2 flex-shrink-0">
+    <footer class="flex flex-col items-center gap-2 pt-3 flex-shrink-0 border-t border-hairline">
       <div class="flex items-center gap-2">
         <UBadge 
           v-if="ride.audioReady.value" 
