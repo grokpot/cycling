@@ -239,6 +239,14 @@ watch(controlOpen, (open) => {
         :total-ms="totalMs"
         :target-watts="ride.targetWatts()"
         :upcoming-labels="upcoming"
+        @seek="ride.seekTo"
+      />
+
+      <RideSongLane
+        :plan="plan"
+        :songs="songs"
+        :elapsed-ms="ride.elapsedMs.value"
+        @seek="ride.seekTo"
       />
 
       <RideIntervalBar
