@@ -68,17 +68,42 @@ function buildGrid(bpm: number, durationSeconds: number): AnalyzeResult {
 export async function analyzeAudio(
   arrayBuffer: ArrayBuffer,
 ): Promise<SongAnalysis & { durationSeconds: number }> {
+  if (arrayBuffer.byteLength === 0) {
+    throw new Error('Empty audio buffer')
+  }
+
   const ctx = new AudioContext()
   const audio = await ctx.decodeAudioData(arrayBuffer.slice(0))
   await ctx.close()
+
+  if (audio.length === 0) {
+    throw new Error('Audio buffer has no samples')
+  }
+
   const channel = audio.getChannelData(0)
+  
+  if (!channel || channel.length === 0) {
+    throw new Error('Audio channel is empty')
+  }
+
   const energyCurve = downsampleEnergy(channel, 120)
   const bpm = estimateBpm(channel, audio.sampleRate)
   const grid = buildGrid(bpm, audio.duration)
-  const rms =
-    Math.sqrt(
-      channel.reduce((s, v) => s + v * v, 0) / Math.max(1, channel.length),
-    ) || 0
+
+  let sumSquares = 0
+  for (let i = 0; i < channel.length; i++) {
+    const v = channel[i]
+    if (Number.isFinite(v)) {
+      sumSquares += v * v
+    }
+  }
+  
+  const rms = Math.sqrt(sumSquares / Math.max(1, channel.length))
+  
+  if (!Number.isFinite(rms)) {
+    throw new Error('RMS calculation produced NaN')
+  }
+
   return {
     ...grid,
     energy: Math.min(1, rms * 8),

@@ -1,142 +1,103 @@
 /**
- * Pitch-preserving time stretch using SoundTouchJS library.
- * MIT licensed, proven quality.
+ * Pitch-preserving time stretch using SoundTouchJS core directly.
+ * Uses SoundTouch, tempo, inputBuffer.putSamples, process, outputBuffer.receiveSamples.
  */
 
-import { SoundTouch, SimpleFilter, WebAudioBufferSource } from 'soundtouchjs'
+import { SoundTouch } from 'soundtouchjs'
 
 export class SoundTouchStretcher {
-  private ctx: AudioContext
+  private ctx: AudioContext | OfflineAudioContext
 
-  constructor(ctx: AudioContext) {
+  constructor(ctx: AudioContext | OfflineAudioContext) {
     this.ctx = ctx
   }
 
   /**
-   * Stretch an audio buffer by the given rate while preserving pitch.
-   * Uses SoundTouchJS for high-quality WSOLA+anti-aliasing.
+   * Stretch an audio buffer by the given tempo while preserving pitch.
    * 
    * @param input Source audio buffer
-   * @param rate Playback rate (1.0 = normal, >1 = faster, <1 = slower)
+   * @param tempo Playback tempo (<1 = slower, 1 = normal, >1 = faster)
    */
-  stretch(input: AudioBuffer, rate: number): AudioBuffer {
-    if (Math.abs(rate - 1.0) < 0.001) {
+  stretch(input: AudioBuffer, tempo: number): AudioBuffer {
+    if (Math.abs(tempo - 1.0) < 0.001) {
       return input
     }
 
-    // Check input buffer validity
-    const inputChannel = input.getChannelData(0)
-    let inputRMS = 0
-    for (let i = 0; i < Math.min(inputChannel.length, 1000); i++) {
-      inputRMS += inputChannel[i] * inputChannel[i]
-    }
-    inputRMS = Math.sqrt(inputRMS / Math.min(inputChannel.length, 1000))
-    console.info(`SoundTouch input: ${input.length} frames, first 1000 samples RMS: ${inputRMS.toFixed(4)}`)
-    console.info(`Input first 10 samples:`, Array.from(inputChannel.slice(0, 10).map(v => v.toFixed(4))))
-
     try {
       const soundtouch = new SoundTouch()
-      
-      // Set sample rate if available
-      if ('setParameters' in soundtouch && typeof (soundtouch as any).setParameters === 'function') {
-        (soundtouch as any).setParameters(input.sampleRate)
-      }
-      
-      soundtouch.tempo = rate
+      soundtouch.tempo = tempo
       soundtouch.pitch = 1.0
 
-      console.info(`SoundTouch configured: tempo=${rate}, pitch=1.0, sampleRate=${input.sampleRate}`)
-
-      // Use SimpleFilter with WebAudioBufferSource
-      const source = new WebAudioBufferSource(input)
-      const filter = new SimpleFilter(source, soundtouch)
-
       const channels = input.numberOfChannels
-      const expectedOutputFrames = Math.ceil(input.length / rate) + 8192
-      
-      // Allocate oversized output buffers
-      const outputBuffers: Float32Array[] = []
-      let totalFramesExtracted = 0
-      const extractBuffer = new Float32Array(4096 * 2)
-      
-      // Extract in chunks until filter is exhausted
-      let iterations = 0
-      const maxIterations = Math.ceil(expectedOutputFrames / 4096) + 100
-      
-      while (iterations < maxIterations) {
-        const framesExtracted = filter.extract(extractBuffer, 4096)
-        if (framesExtracted === 0) break
-        
-        // Store this chunk
-        const chunkLeft = new Float32Array(framesExtracted)
-        const chunkRight = new Float32Array(framesExtracted)
-        
-        // Deinterleave: extractBuffer is [L0, R0, L1, R1, ...]
-        for (let i = 0; i < framesExtracted; i++) {
-          chunkLeft[i] = extractBuffer[i * 2]
-          chunkRight[i] = extractBuffer[i * 2 + 1]
-        }
-        
-        outputBuffers.push(chunkLeft, chunkRight)
-        totalFramesExtracted += framesExtracted
-        iterations++
+      const sampleRate = input.sampleRate
+
+      console.info(`SoundTouch: stretching ${input.length} frames at tempo ${tempo.toFixed(3)}`)
+
+      const leftIn = input.getChannelData(0)
+      const rightIn = channels > 1 ? input.getChannelData(1) : leftIn
+
+      const interleavedInput = new Float32Array(input.length * 2)
+      for (let i = 0; i < input.length; i++) {
+        interleavedInput[i * 2] = leftIn[i]
+        interleavedInput[i * 2 + 1] = rightIn[i]
       }
 
-      console.info(`SoundTouch: Processed ${input.length} → ${totalFramesExtracted} frames at tempo ${rate.toFixed(3)} in ${iterations} iterations`)
+      soundtouch.inputBuffer.putSamples(interleavedInput, 0, input.length)
 
-      if (totalFramesExtracted === 0 || iterations >= maxIterations) {
-        console.warn(`SoundTouch failed: ${totalFramesExtracted} frames in ${iterations} iterations - falling back to unstretched audio`)
+      soundtouch.flush()
+
+      const outputChunks: Float32Array[] = []
+      let totalOutputSamples = 0
+      const chunkSize = 4096
+
+      while (true) {
+        const chunk = new Float32Array(chunkSize * 2)
+        const receivedSamples = soundtouch.outputBuffer.receiveSamples(chunk, chunkSize)
+        
+        if (receivedSamples === 0) {
+          break
+        }
+
+        outputChunks.push(chunk.slice(0, receivedSamples * 2))
+        totalOutputSamples += receivedSamples
+      }
+
+      if (totalOutputSamples === 0) {
+        console.warn(`SoundTouch produced no output - falling back to unstretched audio`)
         return input
       }
 
-      // Check for NaN in output
+      console.info(`SoundTouch: produced ${totalOutputSamples} frames`)
+
+      const interleavedOutput = new Float32Array(totalOutputSamples * 2)
+      let offset = 0
+      for (const chunk of outputChunks) {
+        interleavedOutput.set(chunk, offset)
+        offset += chunk.length
+      }
+
       let hasNaN = false
-      let firstNaNIndex = -1
-      for (let i = 0; i < outputBuffers.length; i += 2) {
-        const chunk = outputBuffers[i]
-        for (let j = 0; j < chunk.length; j++) {
-          if (!Number.isFinite(chunk[j])) {
-            hasNaN = true
-            firstNaNIndex = i / 2
-            console.warn(`Found NaN at chunk ${firstNaNIndex}, sample ${j}/${chunk.length}`)
-            console.warn(`First 10 samples of chunk:`, Array.from(chunk.slice(0, 10)))
-            break
-          }
+      for (let i = 0; i < Math.min(interleavedOutput.length, 1000); i++) {
+        if (!Number.isFinite(interleavedOutput[i])) {
+          hasNaN = true
+          break
         }
-        if (hasNaN) break
       }
 
       if (hasNaN) {
-        console.warn(`SoundTouch produced NaN samples (first at chunk ${firstNaNIndex}) - falling back to unstretched audio`)
+        console.warn(`SoundTouch produced NaN samples - falling back to unstretched audio`)
         return input
       }
-      
-      // Log first few samples of output for debugging
-      if (outputBuffers.length > 0) {
-        const firstChunk = outputBuffers[0]
-        console.info(`First 10 output samples:`, Array.from(firstChunk.slice(0, 10).map(v => v.toFixed(4))))
-      }
 
-      // Create output AudioBuffer
-      const output = this.ctx.createBuffer(
-        channels,
-        totalFramesExtracted,
-        input.sampleRate
-      )
-
-      // Copy chunks to output
+      const output = this.ctx.createBuffer(channels, totalOutputSamples, sampleRate)
       const leftOut = output.getChannelData(0)
       const rightOut = channels > 1 ? output.getChannelData(1) : leftOut
-      
-      let offset = 0
-      for (let i = 0; i < outputBuffers.length; i += 2) {
-        const chunkLeft = outputBuffers[i]
-        const chunkRight = outputBuffers[i + 1]
-        leftOut.set(chunkLeft, offset)
+
+      for (let i = 0; i < totalOutputSamples; i++) {
+        leftOut[i] = interleavedOutput[i * 2]
         if (channels > 1) {
-          rightOut.set(chunkRight, offset)
+          rightOut[i] = interleavedOutput[i * 2 + 1]
         }
-        offset += chunkLeft.length
       }
 
       return output
