@@ -20,6 +20,17 @@ export class AudioMixer {
   private startTime = 0
   private paused = false
 
+  constructor(ctx?: AudioContext | OfflineAudioContext) {
+    if (ctx) {
+      this.ctx = ctx
+      this.stretcher = new SoundTouchStretcher(ctx)
+      this.masterGain = ctx.createGain()
+      this.masterGain.connect(ctx.destination)
+      this.masterGain.gain.value = 0.8
+      console.info(`AudioMixer initialized with external context: ${ctx.sampleRate} Hz`)
+    }
+  }
+
   private ensureCtx() {
     if (!this.ctx) {
       try {
@@ -82,14 +93,16 @@ export class AudioMixer {
       }
 
       try {
-        // Compute stretch rate
+        // Compute tempo (SoundTouch tempo: 1.0 = normal, <1 = slower, >1 = faster)
         const targetBpm = cue.ratio === '2:1' ? cue.lockedRpm * 2 : cue.lockedRpm
-        const stretchRate = song.analysis.bpm / targetBpm
+        // Tempo is targetBpm / songBpm (not songBpm / targetBpm!)
+        // E.g. 90 BPM → 86 BPM: tempo = 86/90 = 0.956 (slower)
+        const tempo = targetBpm / song.analysis.bpm
 
-        console.info(`Cue ${cue.pieceIndex}: ${song.name} - ${song.analysis.bpm} BPM → ${targetBpm} BPM (stretch: ${stretchRate.toFixed(3)})`)
+        console.info(`Cue ${cue.pieceIndex}: ${song.name} - ${song.analysis.bpm} BPM → ${targetBpm} BPM (tempo: ${tempo.toFixed(3)})`)
 
         // Stretch the buffer
-        const stretchedBuffer = this.stretcher.stretch(originalBuffer, stretchRate)
+        const stretchedBuffer = this.stretcher.stretch(originalBuffer, tempo)
 
         // Extract segment from inBeat to outBeat
         const beatDuration = 60 / targetBpm
@@ -202,6 +215,73 @@ export class AudioMixer {
     }
 
     console.info('AudioMixer: All sources scheduled successfully')
+  }
+
+  /**
+   * Schedule sources for offline rendering (call before ctx.startRendering()).
+   */
+  scheduleForOfflineRender() {
+    if (!this.ctx || !this.masterGain) {
+      console.error('AudioMixer: Context not ready for offline render')
+      return
+    }
+
+    if (this.scheduledCues.length === 0) {
+      console.warn('AudioMixer: No cues scheduled for offline render')
+      return
+    }
+
+    console.info(`AudioMixer: Scheduling ${this.scheduledCues.length} sources for offline render`)
+
+    for (let i = 0; i < this.scheduledCues.length; i++) {
+      const scheduled = this.scheduledCues[i]
+      const source = this.ctx.createBufferSource()
+      source.buffer = scheduled.buffer
+
+      // Create gain node for this source for crossfades
+      const gain = this.ctx.createGain()
+      source.connect(gain)
+      gain.connect(this.masterGain)
+
+      // Schedule start at absolute time (no offset for offline)
+      const when = scheduled.startTime
+      source.start(when)
+
+      // Crossfade logic
+      const prevIndex = i - 1
+      const shouldFadeIn = prevIndex >= 0
+
+      if (shouldFadeIn) {
+        const prevScheduled = this.scheduledCues[prevIndex]
+        const crossfadeBeats = prevScheduled.cue.crossfadeBeats || 4
+        const beatDuration = 60 / prevScheduled.cue.lockedRpm
+        const crossfadeDuration = crossfadeBeats * beatDuration
+
+        // Start at 0 and fade in
+        gain.gain.setValueAtTime(0, when)
+        gain.gain.linearRampToValueAtTime(1, when + crossfadeDuration)
+      } else {
+        // First cue, start at full volume
+        gain.gain.setValueAtTime(1, when)
+      }
+
+      // Schedule fade out if there's a next cue
+      const nextIndex = i + 1
+      if (nextIndex < this.scheduledCues.length) {
+        const crossfadeBeats = scheduled.cue.crossfadeBeats || 4
+        const beatDuration = 60 / scheduled.cue.lockedRpm
+        const crossfadeDuration = crossfadeBeats * beatDuration
+
+        // Fade out before the end
+        const fadeOutStart = when + scheduled.duration - crossfadeDuration
+        gain.gain.setValueAtTime(1, fadeOutStart)
+        gain.gain.linearRampToValueAtTime(0, fadeOutStart + crossfadeDuration)
+      }
+
+      this.activeSources.push(source)
+    }
+
+    console.info('AudioMixer: Offline render sources scheduled')
   }
 
   /**

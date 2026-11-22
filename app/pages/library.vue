@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { analyzeAudio } from '~/audio/analyze'
+import { formatDuration } from '#shared/format'
 import { 
   getFolderHandle, 
   setFolderHandle, 
@@ -91,6 +92,11 @@ async function toggleBan(song: Song) {
   await refresh()
 }
 
+async function deleteSong(id: string) {
+  await store.deleteSong(id)
+  await refresh()
+}
+
 async function uploadFiles(files: File[] | File | null) {
   const fileList = Array.isArray(files) ? files : files ? [files] : []
   if (fileList.length === 0) {
@@ -151,74 +157,96 @@ const columns = [
 </script>
 
 <template>
-  <UDashboardNavbar title="Library" />
-  <div class="p-4 max-w-3xl space-y-4">
-    <UAlert
-      color="info"
-      variant="soft"
-      title="Demo songs loaded"
-      description="The app includes 5 demo songs with tempo analysis. Test the full workflow with the demo workout on the main page. Add your own tracks by choosing a music folder below."
-    />
-    
-    <div class="space-y-3">
-      <div class="flex flex-wrap gap-2">
-        <UButton
-          label="Choose a music folder"
-          icon="i-lucide-folder-open"
-          variant="soft"
-          @click="pickFolder"
-        />
-        <UFileUpload
-          accept=".mp3,.flac,.aac,.m4a,.wav"
-          multiple
-          label="Upload audio files"
-          icon="i-lucide-upload"
-          :loading="uploading"
-          @update:model-value="uploadFiles"
-        />
-      </div>
-      <UAlert
-        color="info"
-        variant="soft"
-        title="Two ways to add music"
-        description="Choose folder: reads files in place (Chrome/Edge desktop). Upload files: copies to app storage (works everywhere, including Android)."
-      />
-      <UAlert
-        v-if="pickerMissing"
-        color="warning"
-        variant="soft"
-        title="Folder picker unavailable"
-        description="This browser does not support folder access. Use Upload files instead."
-      />
-    </div>
-    
-    <template v-if="songs.length > 0">
-      <div class="flex items-center justify-between">
-        <p class="text-sm text-muted">
-          {{ songs.length }} {{ songs.length === 1 ? 'track' : 'tracks' }}.
-          Analyze tracks from your folder before the planner can match them to a cadence.
-        </p>
-      </div>
-      <UTable :columns="columns" :data="songs">
-        <template #actions-cell="{ row }">
-          <div class="flex gap-1 justify-end">
+  <div class="flex flex-col h-screen">
+    <UDashboardNavbar title="Library" />
+    <div class="flex-1 overflow-y-auto">
+      <div class="p-4 max-w-4xl mx-auto space-y-4">
+        <div class="space-y-3">
+          <div class="flex flex-wrap gap-2">
             <UButton
-              size="xs"
-              variant="soft"
-              :loading="analyzing === row.original.id"
-              label="Analyze"
-              @click="analyzeSong(row.original as Song)"
+              label="Choose Music Folder"
+              icon="i-lucide-folder-open"
+              @click="pickFolder"
             />
-            <UButton
-              size="xs"
-              variant="soft"
-              :color="row.original.banned ? 'warning' : 'neutral'"
-              :label="row.original.banned ? 'Unban' : 'Ban'"
-              @click="toggleBan(row.original as Song)"
+            <UFileUpload
+              accept=".mp3,.flac,.aac,.m4a,.wav"
+              multiple
+              label="Upload Files"
+              icon="i-lucide-upload"
+              :loading="uploading"
+              @update:model-value="uploadFiles"
             />
           </div>
-        </template>
-      </UTable>
-    </template>
+          <UAlert
+            v-if="songs.length === 0"
+            color="info"
+            variant="soft"
+            title="Add your music"
+            description="Choose a folder to scan audio files, or upload individual tracks. The app analyzes tempo automatically."
+          />
+          <UAlert
+            v-if="pickerMissing"
+            color="warning"
+            variant="soft"
+            title="Folder picker unavailable"
+            description="This browser doesn't support folder access. Use Upload Files instead."
+          />
+        </div>
+        
+        <div v-if="songs.length > 0" class="space-y-3">
+          <div class="flex items-center justify-between">
+            <div class="text-caption text-muted">
+              {{ songs.length }} {{ songs.length === 1 ? 'song' : 'songs' }}
+            </div>
+          </div>
+          
+          <UCard 
+            v-for="song in songs" 
+            :key="song.id"
+            class="hover:bg-accented/5 transition-colors"
+          >
+            <div class="flex justify-between items-center gap-4">
+              <div class="flex-1 min-w-0">
+                <div class="font-medium truncate">
+                  {{ song.name }}
+                </div>
+                <div class="text-sm text-muted mt-0.5">
+                  <template v-if="song.analysis">
+                    {{ song.analysis.bpm }} BPM · {{ formatDuration(song.analysis.durationSeconds) }}
+                  </template>
+                  <template v-else>
+                    Not analyzed yet
+                  </template>
+                </div>
+              </div>
+              <div class="flex items-center gap-3 shrink-0">
+                <UButton
+                  v-if="!song.analysis && song.fileKey"
+                  variant="soft"
+                  size="sm"
+                  label="Analyze"
+                  :loading="analyzing === song.id"
+                  @click="analyzeSong(song)"
+                />
+                <UFormField v-if="song.analysis" label="Active" class="text-xs">
+                  <USwitch
+                    :model-value="!song.banned"
+                    @update:model-value="toggleBan(song)"
+                  />
+                </UFormField>
+                <UButton
+                  variant="ghost"
+                  color="error"
+                  icon="i-lucide-trash-2"
+                  size="sm"
+                  aria-label="Delete song"
+                  @click="deleteSong(song.id)"
+                />
+              </div>
+            </div>
+          </UCard>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

@@ -64,62 +64,67 @@ async function loadDemoData() {
 </script>
 
 <template>
-  <UDashboardNavbar title="Workouts" />
-  <div class="p-4 space-y-4">
-    <div class="flex flex-wrap gap-2">
-      <UButton
-        to="/workouts/new"
-        label="New workout"
-        icon="i-lucide-plus"
-      />
-      <UFileUpload
-        accept=".zwo"
-        label="Import .zwo"
-        @update:model-value="onZwo"
-      />
-      <UButton
-        label="Load demo data"
-        icon="i-lucide-lightbulb"
-        variant="soft"
-        color="neutral"
-        @click="loadDemoData"
-      />
-    </div>
-    <UEmpty
-      v-if="workouts.length === 0"
-      icon="i-lucide-bike"
-      title="No workouts yet"
-      description="Start by loading demo data, importing a .zwo file, or building your first workout."
-      :actions="[
-        { label: 'Load demo data', onClick: loadDemoData, icon: 'i-lucide-lightbulb' },
-        { label: 'New workout', to: '/workouts/new', icon: 'i-lucide-plus' },
-      ]"
-    />
-    <div v-else class="space-y-2">
-      <UCard
-        v-for="w in workouts"
-        :key="w.id"
-        class="cursor-pointer"
-        @click="router.push(`/workouts/${w.id}`)"
-      >
-        <div class="flex justify-between items-center gap-2">
-          <div>
-            <p class="text-body font-medium">
-              {{ w.name }}
-            </p>
-            <p class="text-caption text-muted">
-              {{ workoutMeta(w) }}
-            </p>
-          </div>
+  <div class="flex flex-col h-screen">
+    <UDashboardNavbar title="Workouts" />
+    <div class="flex-1 overflow-y-auto">
+      <div class="p-4 max-w-4xl mx-auto space-y-4">
+        <div class="flex flex-wrap gap-2">
           <UButton
-            :to="`/workouts/${w.id}`"
-            variant="ghost"
-            color="neutral"
-            icon="i-lucide-chevron-right"
-            aria-label="Open workout"
+            to="/workouts/new"
+            label="New Workout"
+            icon="i-lucide-plus"
+          />
+          <UFileUpload
+            accept=".zwo"
+            label="Import .zwo"
+            icon="i-lucide-upload"
+            @update:model-value="onZwo"
+          />
+          <UButton
+            v-if="workouts.length === 0"
+            label="Load Demo"
+            icon="i-lucide-lightbulb"
+            variant="soft"
+            @click="loadDemoData"
           />
         </div>
-      </UCard>
+        <UEmpty
+          v-if="workouts.length === 0"
+          icon="i-lucide-bike"
+          title="No workouts yet"
+          description="Start with the demo, import a Zwift .zwo file, or build your first workout."
+          :actions="[
+            { label: 'Load Demo', onClick: loadDemoData, icon: 'i-lucide-lightbulb' },
+            { label: 'Import .zwo', icon: 'i-lucide-upload' },
+          ]"
+        />
+        <div v-else class="grid gap-3">
+          <UCard
+            v-for="w in workouts"
+            :key="w.id"
+            class="cursor-pointer hover:bg-accented/5 transition-colors"
+            @click="router.push(`/workouts/${w.id}`)"
+          >
+            <div class="flex justify-between items-start gap-4">
+              <div class="flex-1 min-w-0">
+                <h3 class="text-h3 font-semibold truncate">
+                  {{ w.name }}
+                </h3>
+                <p class="text-caption text-muted mt-1">
+                  {{ workoutMeta(w) }}
+                </p>
+              </div>
+              <UButton
+                variant="ghost"
+                color="neutral"
+                icon="i-lucide-play"
+                aria-label="Start workout"
+                size="lg"
+              />
+            </div>
+          </UCard>
+        </div>
+      </div>
     </div>
   </div>
 </template>
