@@ -8,25 +8,47 @@ defineProps<{
 </script>
 
 <template>
-  <UCard :class="{ 'pulse-card': pulse }" class="p-4">
-    <div class="flex flex-col gap-1">
-      <div class="text-xs text-muted uppercase tracking-wide font-medium">
-        {{ title }}
-      </div>
-      <div class="text-4xl font-bold tabular-nums">
-        {{ value }}
-      </div>
-      <div v-if="caption" class="text-sm text-muted">
-        {{ caption }}
-      </div>
-      <slot />
+  <div 
+    :class="{ 'pulse-card': pulse }" 
+    class="metric-card"
+  >
+    <div class="font-metric-label">
+      {{ title }}
     </div>
-  </UCard>
+    <div class="metric-value font-metric metric-animate">
+      {{ value }}
+    </div>
+    <div v-if="caption" class="metric-caption">
+      {{ caption }}
+    </div>
+    <slot />
+  </div>
 </template>
 
 <style scoped>
+.metric-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.metric-value {
+  font-size: 4rem;
+  line-height: 1;
+  color: var(--text-primary);
+}
+
+.metric-caption {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
 .pulse-card {
-  animation: pulse-beat 0.15s ease-out;
+  animation: pulse-beat 150ms ease-out;
 }
 
 @keyframes pulse-beat {
@@ -34,11 +56,17 @@ defineProps<{
     transform: scale(1);
   }
   50% {
-    transform: scale(1.02);
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.3);
+    transform: scale(1.03);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
   }
   100% {
     transform: scale(1);
+  }
+}
+
+@media (max-width: 768px) {
+  .metric-value {
+    font-size: 2.5rem;
   }
 }
 </style>

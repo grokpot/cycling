@@ -107,6 +107,7 @@ const option = computed(() => {
   const maxFtp = Math.max(...barData.value.map(d => d.value[2]), 150)
 
   return {
+    backgroundColor: 'transparent',
     grid: {
       left: 50,
       right: 20,
@@ -120,6 +121,17 @@ const option = computed(() => {
       max: totalSeconds.value,
       axisLabel: {
         formatter: (val: number) => formatDuration(val),
+        color: '#a1a1a1',
+      },
+      axisLine: {
+        lineStyle: {
+          color: '#2a2a2a',
+        },
+      },
+      splitLine: {
+        lineStyle: {
+          color: '#2a2a2a',
+        },
       },
     },
     yAxis: [
@@ -128,8 +140,22 @@ const option = computed(() => {
         name: 'FTP %',
         min: 0,
         max: maxFtp,
+        nameTextStyle: {
+          color: '#a1a1a1',
+        },
         axisLabel: {
           formatter: '{value}%',
+          color: '#a1a1a1',
+        },
+        axisLine: {
+          lineStyle: {
+            color: '#2a2a2a',
+          },
+        },
+        splitLine: {
+          lineStyle: {
+            color: '#2a2a2a',
+          },
         },
       },
     ],
@@ -164,7 +190,7 @@ const option = computed(() => {
               y: endPx[1] - 8,
               textAlign: 'center',
               fontSize: 11,
-              fill: '#6b7280',
+              fill: '#a1a1a1',
             },
           } : null
 
@@ -177,8 +203,9 @@ const option = computed(() => {
               y: endPx[1] + height / 2,
               textAlign: 'center',
               textVerticalAlign: 'middle',
-              fontSize: 10,
-              fill: '#fff',
+              fontSize: 11,
+              fontWeight: 600,
+              fill: '#ffffff',
             },
           } : null
 
@@ -223,7 +250,7 @@ const option = computed(() => {
               textAlign: 'center',
               textVerticalAlign: 'middle',
               fontSize: 10,
-              fill: '#374151',
+              fill: '#d1d5db',
               overflow: 'truncate',
               width,
             },
@@ -254,7 +281,7 @@ const option = computed(() => {
             y2: 0,
           },
           style: {
-            stroke: '#000',
+            stroke: '#ffffff',
             lineWidth: 2,
           },
           onupdate: function(this: any) {
@@ -278,6 +305,11 @@ const option = computed(() => {
     } : {}),
     tooltip: {
       trigger: 'item',
+      backgroundColor: '#1a1a1a',
+      borderColor: '#2a2a2a',
+      textStyle: {
+        color: '#ffffff',
+      },
       formatter: (params: any) => {
         if (params.seriesIndex === 0) {
           const [start, end, ftpPct, cadence] = params.value

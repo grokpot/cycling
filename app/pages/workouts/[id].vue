@@ -212,7 +212,7 @@ async function startRide() {
 </script>
 
 <template>
-  <div v-if="workout && profile" class="flex flex-col h-screen">
+  <div v-if="workout && profile" class="workout-page">
     <!-- Header -->
     <div class="flex items-center justify-between p-4 border-b border-hairline">
       <h1 class="text-lg font-semibold">{{ workout.name }}</h1>
@@ -227,34 +227,32 @@ async function startRide() {
     </div>
     
     <!-- Scrollable content -->
-    <div class="flex-1 overflow-y-auto">
-      <div class="p-4 max-w-4xl mx-auto space-y-6 pb-24">
+    <div class="workout-content">
+      <div class="workout-container">
         <!-- Workout visualization -->
         <WorkoutEChartsGraph :workout="workout" :profile="profile" :intensity-scale="intensityScale" :plan="plan?.cues?.length ? plan : undefined" :songs="songs" />
 
         <!-- Workout stats -->
-        <UCard>
-          <div class="grid grid-cols-3 gap-4">
-            <div>
-              <div class="text-caption text-muted">Duration</div>
-              <div class="text-h3 font-semibold">
-                {{ formatDuration(workout.intervals.reduce((sum, i) => sum + i.durationSeconds, 0)) }}
-              </div>
-            </div>
-            <div>
-              <div class="text-caption text-muted">Intervals</div>
-              <div class="text-h3 font-semibold">
-                {{ workout.intervals.length }}
-              </div>
-            </div>
-            <div>
-              <div class="text-caption text-muted">Music</div>
-              <div class="text-h3 font-semibold">
-                {{ cueRows.length > 0 ? '✓ Ready' : 'Setting up...' }}
-              </div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="font-metric-label">Duration</div>
+            <div class="stat-value">
+              {{ formatDuration(workout.intervals.reduce((sum, i) => sum + i.durationSeconds, 0)) }}
             </div>
           </div>
-        </UCard>
+          <div class="stat-card">
+            <div class="font-metric-label">Intervals</div>
+            <div class="stat-value">
+              {{ workout.intervals.length }}
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="font-metric-label">Music</div>
+            <div class="stat-value">
+              {{ cueRows.length > 0 ? '✓ Ready' : 'Setting up...' }}
+            </div>
+          </div>
+        </div>
 
         <!-- Suggestions (collapsed) -->
         <UAccordion
@@ -386,25 +384,112 @@ async function startRide() {
     </div>
     
     <!-- Fixed bottom action bar -->
-    <div class="border-t border-hairline bg-background">
-      <div class="p-4 max-w-4xl mx-auto flex flex-wrap items-center gap-3">
+    <div class="action-bar">
+      <div class="action-bar-content">
         <UButton
           type="button"
           label="Start Ride"
           size="xl"
           :disabled="!canStart"
           icon="i-lucide-play"
+          color="primary"
           @click="startRide"
         />
-        <div v-if="startBlocker" class="text-sm text-muted">
+        <div v-if="startBlocker" class="action-info">
           {{ startBlocker }}
         </div>
-        <div v-else class="text-sm text-muted">
+        <div v-else class="action-info">
           {{ formatDuration(workout.intervals.reduce((sum, i) => sum + i.durationSeconds, 0)) }} · {{ cueRows.length }} songs
         </div>
       </div>
     </div>
   </div>
   
-  <UEmpty v-else class="m-4" icon="i-lucide-search-x" title="Workout not found" />
+  <div v-else class="workout-page">
+    <div class="empty-state">
+      <p>Workout not found</p>
+    </div>
+  </div>
 </template>
+
+<style scoped>
+.workout-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bg-primary);
+}
+
+.workout-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.workout-container {
+  padding: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-bottom: 6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.stat-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-top: 0.5rem;
+}
+
+.action-bar {
+  border-top: 1px solid var(--border);
+  background: var(--bg-surface);
+}
+
+.action-bar-content {
+  padding: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+.action-info {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .workout-container {
+    padding: 1rem;
+  }
+}
+</style>
