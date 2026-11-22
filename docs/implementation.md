@@ -218,16 +218,20 @@ The ride layout is light and high contrast, matching that player. `UColorMode` c
 
 Each step is usable on its own. Later steps sit on the ports from earlier ones.
 
-1. Nuxt UI, `UApp`, both layouts, empty routes, theme.
-2. `shared/types.ts`, `targets.ts`, and `zwo.ts`, with Vitest covering scale, FTP gating, RPE without FTP, range midpoint, auto-fill, and ramp splits.
-3. IndexedDB repository and the workout list, builder, and `.zwo` import.
-4. Ride layout and the six tiles, graph, interval bar, and drawers, driven by `TrainerPort`'s simulator.
-5. FTMS trainer and heart-rate strap on those same ports. ERG follows the resolved watts. Headwind behind `FanPort` once its service is confirmed.
-6. Folder library, analysis worker, and `server/api/catalog/starter.get.ts`.
-7. Planner, pre-ride table, gaps, pin, swap, ban.
-8. Mixer on the audio clock, including skip song, skip interval, and pause.
-9. Ride samples and `.fit` download.
-10. PWA shell cache, catalog cache, and analysis cache. The music folder stays outside the cache.
+1. ✅ Nuxt UI, `UApp`, both layouts, empty routes, theme.
+2. ✅ `shared/types.ts`, `targets.ts`, and `zwo.ts`, with Vitest covering scale, FTP gating, RPE without FTP, range midpoint, auto-fill, and ramp splits.
+3. ✅ IndexedDB repository and the workout list, builder, and `.zwo` import.
+4. ✅ Ride layout and the six tiles, graph, interval bar, and drawers, driven by `TrainerPort`'s simulator.
+5. ⚠️ FTMS trainer and heart-rate strap on those same ports. ERG follows the resolved watts. Headwind behind `FanPort` once its service is confirmed. (Code exists, needs real device testing)
+6. ⚠️ Folder library, analysis worker, and `server/api/catalog/starter.get.ts`. (Code exists, folder picker has Android Chrome permission issues. Demo songs added for testing.)
+7. ✅ Planner, pre-ride table, gaps, pin, swap, ban.
+8. ⚠️ Mixer on the audio clock, including skip song, skip interval, and pause. (Mixer exists but needs integration with real audio files and pitch-preserving stretch)
+9. ✅ Ride samples and `.fit` download.
+10. ❌ PWA shell cache, catalog cache, and analysis cache. The music folder stays outside the cache.
+
+**Current status (Nov 2026):** Steps 1-4, 7, 9 complete. Device ports (5) exist but untested with real hardware. Audio (6, 8) has analysis and mixer shells but needs real files and pitch-preserving stretch. PWA caching (10) not yet implemented.
+
+**Demo data:** A sample 30-minute interval workout and 5 demo songs with tempo analysis can be loaded from the workout list. This demonstrates the full workflow without needing hardware or a music folder.
 
 Sync routes are not part of this sequence. `server/utils/supabase.ts` exports a function that refuses to run until the URL and service key exist, so a later route has one place to construct the client.
 

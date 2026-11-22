@@ -6,6 +6,10 @@ const items: NavigationMenuItem[] = [
   { label: 'Library', to: '/library', icon: 'i-lucide-music' },
   { label: 'Settings', to: '/settings', icon: 'i-lucide-settings' },
 ]
+
+const secondaryItems: NavigationMenuItem[] = [
+  { label: 'Welcome', to: '/welcome', icon: 'i-lucide-lightbulb' },
+]
 </script>
 
 <template>
@@ -17,6 +21,9 @@ const items: NavigationMenuItem[] = [
         </div>
       </template>
       <UNavigationMenu :items="items" orientation="vertical" />
+      <template #footer>
+        <UNavigationMenu :items="secondaryItems" orientation="vertical" />
+      </template>
     </UDashboardSidebar>
     <UDashboardPanel>
       <slot />

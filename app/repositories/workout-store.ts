@@ -7,9 +7,9 @@ import {
 import type { Plan, Profile, Ride, Song, Workout } from '#shared/types'
 
 const DB_NAME = 'cycling'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
-type StoreName = 'profiles' | 'workouts' | 'songs' | 'plans' | 'rides'
+type StoreName = 'profiles' | 'workouts' | 'songs' | 'plans' | 'rides' | 'audioBlobs'
 
 function defaultProfile(): Profile {
   return {
@@ -40,6 +40,7 @@ function openDb(): Promise<IDBDatabase> | null {
         'songs',
         'plans',
         'rides',
+        'audioBlobs',
       ] as const) {
         if (!db.objectStoreNames.contains(name)) {
           db.createObjectStore(name, { keyPath: 'id' })
@@ -116,6 +117,20 @@ export async function listSongs(): Promise<Song[]> {
 
 export async function saveSong(song: Song): Promise<void> {
   await withStore('songs', 'readwrite', (os) => os.put(plain(song)))
+}
+
+export async function saveAudioBlob(songId: string, blob: Blob): Promise<void> {
+  await withStore('audioBlobs', 'readwrite', (os) =>
+    os.put({ id: songId, blob }),
+  )
+}
+
+export async function getAudioBlob(songId: string): Promise<Blob | null> {
+  const record =
+    (await withStore<{ id: string; blob: Blob }>('audioBlobs', 'readonly', (os) =>
+      os.get(songId),
+    )) ?? null
+  return record?.blob ?? null
 }
 
 export async function savePlan(plan: Plan): Promise<void> {

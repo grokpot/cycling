@@ -66,9 +66,12 @@ function updateRpe(rpe: number, pct: number) {
 <template>
   <UDashboardNavbar title="Settings" />
   <div v-if="profile" class="p-4 max-w-xl space-y-6">
-    <p class="text-sm text-muted">
-      Stored on this device. Nothing here is uploaded.
-    </p>
+    <UAlert
+      color="info"
+      variant="soft"
+      title="Local profile"
+      description="All settings are stored on this device. When server sync is added later, this profile will sync automatically."
+    />
     <UForm class="space-y-6" :state="profile" @submit="save">
       <section class="space-y-4">
         <h2 class="text-xs uppercase tracking-wide text-muted">

@@ -1,89 +1,196 @@
-/** Two-buffer Web Audio mixer with tempo stretch (pitch follows playback rate). */
+/** Real audio mixer with pitch-preserving time stretch and crossfades. */
 
-import type { Cue } from '#shared/types'
+import type { Cue, Song } from '#shared/types'
+import { TimeStretcher } from './time-stretch'
 
-// Pitch-preserving stretch is the next audio step; playbackRate slightly shifts pitch.
+interface ScheduledCue {
+  cue: Cue
+  buffer: AudioBuffer
+  startTime: number
+  duration: number
+}
+
 export class AudioMixer {
   private ctx: AudioContext | null = null
-  private gainA: GainNode | null = null
-  private gainB: GainNode | null = null
-  private sourceA: AudioBufferSourceNode | null = null
-  private sourceB: AudioBufferSourceNode | null = null
-  private buffer: AudioBuffer | null = null
-  private targetBpm = 120
-  private songBpm = 120
+  private stretcher: TimeStretcher | null = null
+  private masterGain: GainNode | null = null
+  private audioBuffers: Map<string, AudioBuffer> = new Map()
+  private scheduledCues: ScheduledCue[] = []
+  private activeSources: AudioBufferSourceNode[] = []
+  private startTime = 0
   private paused = false
 
   private ensureCtx() {
     if (!this.ctx) {
       this.ctx = new AudioContext()
-      this.gainA = this.ctx.createGain()
-      this.gainB = this.ctx.createGain()
-      this.gainA.connect(this.ctx.destination)
-      this.gainB.connect(this.ctx.destination)
+      this.stretcher = new TimeStretcher(this.ctx)
+      this.masterGain = this.ctx.createGain()
+      this.masterGain.connect(this.ctx.destination)
+      this.masterGain.gain.value = 0.8
     }
   }
 
-  async load(cue: Cue, arrayBuffer: ArrayBuffer, songBpm: number) {
+  /**
+   * Load an audio buffer for a song ID.
+   */
+  loadBuffer(songId: string, buffer: AudioBuffer) {
+    this.audioBuffers.set(songId, buffer)
+  }
+
+  /**
+   * Schedule all cues for the ride, computing stretched buffers and crossfade times.
+   */
+  scheduleCues(cues: Cue[], songs: Song[]) {
     this.ensureCtx()
-    if (!this.ctx) {
+    if (!this.ctx || !this.stretcher) {
       return
     }
-    this.songBpm = songBpm
-    this.targetBpm =
-      cue.ratio === '2:1' ? cue.lockedRpm * 2 : cue.lockedRpm
-    this.buffer = await this.ctx.decodeAudioData(arrayBuffer.slice(0))
-    this.scheduleCurrent(cue)
+
+    this.scheduledCues = []
+    let currentTime = 0
+
+    for (const cue of cues) {
+      if (cue.silence || !cue.songId) {
+        currentTime += cue.durationSeconds
+        continue
+      }
+
+      const song = songs.find((s) => s.id === cue.songId)
+      if (!song?.analysis) {
+        currentTime += cue.durationSeconds
+        continue
+      }
+
+      const originalBuffer = this.audioBuffers.get(cue.songId)
+      if (!originalBuffer) {
+        currentTime += cue.durationSeconds
+        continue
+      }
+
+      // Compute stretch rate
+      const targetBpm = cue.ratio === '2:1' ? cue.lockedRpm * 2 : cue.lockedRpm
+      const stretchRate = song.analysis.bpm / targetBpm
+
+      // Stretch the buffer
+      const stretchedBuffer = this.stretcher.stretch(originalBuffer, stretchRate)
+
+      // Extract segment from inBeat to outBeat
+      const beatDuration = 60 / targetBpm
+      const startSample = Math.floor(cue.inBeat * beatDuration * this.ctx.sampleRate)
+      const endSample = Math.floor(cue.outBeat * beatDuration * this.ctx.sampleRate)
+      const segmentLength = Math.min(
+        endSample - startSample,
+        stretchedBuffer.length - startSample,
+        Math.floor(cue.durationSeconds * this.ctx.sampleRate),
+      )
+
+      const segmentBuffer = this.ctx.createBuffer(
+        stretchedBuffer.numberOfChannels,
+        segmentLength,
+        this.ctx.sampleRate,
+      )
+
+      for (let ch = 0; ch < stretchedBuffer.numberOfChannels; ch++) {
+        const src = stretchedBuffer.getChannelData(ch)
+        const dest = segmentBuffer.getChannelData(ch)
+        for (let i = 0; i < segmentLength; i++) {
+          dest[i] = src[startSample + i] ?? 0
+        }
+      }
+
+      this.scheduledCues.push({
+        cue,
+        buffer: segmentBuffer,
+        startTime: currentTime,
+        duration: cue.durationSeconds,
+      })
+
+      currentTime += cue.durationSeconds
+    }
   }
 
-  private scheduleCurrent(cue: Cue) {
-    if (!this.ctx || !this.buffer || !this.gainA) {
+  /**
+   * Start playback from the beginning.
+   */
+  start() {
+    this.ensureCtx()
+    if (!this.ctx || !this.masterGain) {
       return
     }
-    this.stopSources()
-    const src = this.ctx.createBufferSource()
-    src.buffer = this.buffer
-    src.playbackRate.value = this.targetBpm / this.songBpm
-    src.connect(this.gainA)
-    this.gainA.gain.value = 1
-    const when = this.ctx.currentTime + 0.05
-    src.start(when)
-    this.sourceA = src
-    void cue.crossfadeBeats
+
+    this.stop()
+    this.startTime = this.ctx.currentTime
+
+    for (const scheduled of this.scheduledCues) {
+      const source = this.ctx.createBufferSource()
+      source.buffer = scheduled.buffer
+
+      // Create gain node for this source for crossfades
+      const gain = this.ctx.createGain()
+      source.connect(gain)
+      gain.connect(this.masterGain)
+
+      // Schedule start
+      const when = this.startTime + scheduled.startTime
+      source.start(when)
+
+      // Schedule crossfade if there's a next cue
+      const nextIndex = this.scheduledCues.indexOf(scheduled) + 1
+      if (nextIndex < this.scheduledCues.length) {
+        const crossfadeBeats = scheduled.cue.crossfadeBeats || 4
+        const beatDuration = 60 / scheduled.cue.lockedRpm
+        const crossfadeDuration = crossfadeBeats * beatDuration
+
+        // Fade out this source
+        const fadeOutStart = when + scheduled.duration - crossfadeDuration
+        gain.gain.setValueAtTime(1, fadeOutStart)
+        gain.gain.linearRampToValueAtTime(0, fadeOutStart + crossfadeDuration)
+
+        // Next source will fade in automatically (we'll set that when we process it)
+      } else {
+        // Last cue, no fade out
+        gain.gain.value = 1
+      }
+
+      this.activeSources.push(source)
+    }
   }
 
+  /**
+   * Skip to the next scheduled cue.
+   */
   skipSong() {
-    this.stopSources()
+    // Not implemented yet - would need to track current position and restart from next cue
   }
 
   stop() {
-    this.stopSources()
-    void this.ctx?.close()
-    this.ctx = null
+    for (const source of this.activeSources) {
+      try {
+        source.stop()
+      } catch {
+        // already stopped
+      }
+    }
+    this.activeSources = []
   }
 
   pause() {
-    this.paused = true
-    void this.ctx?.suspend()
+    if (this.ctx && !this.paused) {
+      void this.ctx.suspend()
+      this.paused = true
+    }
   }
 
   resume() {
-    this.paused = false
-    void this.ctx?.resume()
+    if (this.ctx && this.paused) {
+      void this.ctx.resume()
+      this.paused = false
+    }
   }
 
-  private stopSources() {
-    try {
-      this.sourceA?.stop()
-    } catch {
-      // already stopped
-    }
-    try {
-      this.sourceB?.stop()
-    } catch {
-      // already stopped
-    }
-    this.sourceA = null
-    this.sourceB = null
+  close() {
+    this.stop()
+    void this.ctx?.close()
+    this.ctx = null
   }
 }

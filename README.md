@@ -9,6 +9,10 @@ npm install
 npm run dev
 ```
 
+## Demo data
+
+Click "Load demo data" on the workout list to seed a sample 30-minute interval workout and 5 demo songs with tempo analysis. This demonstrates the full workflow without needing to build a workout or choose a music folder.
+
 ## Checks
 
 ```bash

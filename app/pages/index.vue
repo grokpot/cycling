@@ -3,15 +3,24 @@ import { formatDuration } from '#shared/format'
 import { parseZwo } from '#shared/zwo'
 import type { Workout } from '#shared/types'
 import { useWorkoutStore } from '~/repositories/workout-store'
+import { createDemoWorkout, createDemoSongs } from '~/utils/demo-data'
 
 definePageMeta({ layout: 'default' })
 
 const store = useWorkoutStore()
 const router = useRouter()
+const toast = useToast()
 const workouts = ref<Workout[]>([])
+const isFirstVisit = useState('first-visit', () => true)
 
 async function load() {
   workouts.value = await store.listWorkouts()
+  
+  // Redirect to welcome if first visit and no workouts
+  if (isFirstVisit.value && workouts.value.length === 0) {
+    isFirstVisit.value = false
+    await router.push('/welcome')
+  }
 }
 
 onMounted(load)
@@ -37,6 +46,21 @@ async function onZwo(files: File[] | File | null) {
   await store.saveWorkout(workout)
   await load()
 }
+
+async function loadDemoData() {
+  const workout = createDemoWorkout()
+  await store.saveWorkout(workout)
+  const songs = createDemoSongs()
+  for (const song of songs) {
+    await store.saveSong(song)
+  }
+  toast.add({ 
+    title: 'Demo data loaded', 
+    description: 'Added demo workout and 5 demo songs',
+    color: 'success' 
+  })
+  await load()
+}
 </script>
 
 <template>
@@ -53,13 +77,22 @@ async function onZwo(files: File[] | File | null) {
         label="Import .zwo"
         @update:model-value="onZwo"
       />
+      <UButton
+        label="Load demo data"
+        icon="i-lucide-lightbulb"
+        variant="soft"
+        color="neutral"
+        @click="loadDemoData"
+      />
     </div>
     <UEmpty
       v-if="workouts.length === 0"
+      icon="i-lucide-bike"
       title="No workouts yet"
-      description="Import a .zwo file or build a workout."
+      description="Start by loading demo data, importing a .zwo file, or building your first workout."
       :actions="[
-        { label: 'New workout', to: '/workouts/new' },
+        { label: 'Load demo data', onClick: loadDemoData, icon: 'i-lucide-lightbulb' },
+        { label: 'New workout', to: '/workouts/new', icon: 'i-lucide-plus' },
       ]"
     />
     <div v-else class="space-y-2">
