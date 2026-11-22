@@ -25,6 +25,31 @@ const deviceError = ref<string | null>(null)
 
 const ride = useRide(workout, plan, profile)
 
+// Keyboard shortcuts
+function handleKeydown(e: KeyboardEvent) {
+  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+    return
+  }
+  if (e.key === ' ' || e.key === 'k') {
+    e.preventDefault()
+    ride.pauseRide()
+  } else if (e.key === 's') {
+    e.preventDefault()
+    ride.skipInterval()
+  } else if (e.key === 'c') {
+    e.preventDefault()
+    controlOpen.value = !controlOpen.value
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown)
+})
+
 onMounted(async () => {
   const wid = String(route.params.id)
   workout.value = await store.getWorkout(wid)
@@ -249,7 +274,7 @@ watch(controlOpen, (open) => {
       />
     </div>
 
-    <div class="flex justify-center pt-2 flex-shrink-0">
+    <footer class="flex flex-col items-center gap-2 pt-2 flex-shrink-0">
       <UButton
         label="Download .fit"
         variant="ghost"
@@ -257,7 +282,10 @@ watch(controlOpen, (open) => {
         icon="i-lucide-download"
         @click="downloadFit"
       />
-    </div>
+      <p class="text-xs text-muted">
+        Space: pause · S: skip interval · C: control
+      </p>
+    </footer>
 
     <RideControlDrawer
       v-model:open="controlOpen"
