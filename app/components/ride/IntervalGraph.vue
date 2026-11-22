@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { Profile, Workout, Plan } from '#shared/types'
 import { ftpPercentForInterval, resolveWatts } from '#shared/targets'
+import { clickPositionToTime, formatSeekTime } from '#shared/seek'
 
 const props = defineProps<{
   workout: Workout
@@ -13,9 +14,20 @@ const props = defineProps<{
   upcomingLabels: string[]
 }>()
 
+const emit = defineEmits<{
+  seek: [elapsedMs: number]
+}>()
+
 const width = 360
 const height = 140
 const padding = 8
+
+const hoverX = ref<number | null>(null)
+const hoverTime = computed(() => {
+  if (hoverX.value === null) return null
+  const ms = clickPositionToTime(hoverX.value, width, padding, props.totalMs)
+  return formatSeekTime(ms)
+})
 
 const blocks = computed(() => {
   let x = padding
@@ -47,11 +59,35 @@ const targetY = computed(() => {
   }
   return height - padding - (props.targetWatts / maxWatts.value) * (height - padding * 2)
 })
+
+function handleClick(event: MouseEvent) {
+  const svg = event.currentTarget as SVGElement
+  const rect = svg.getBoundingClientRect()
+  const clickX = ((event.clientX - rect.left) / rect.width) * width
+  const ms = clickPositionToTime(clickX, width, padding, props.totalMs)
+  emit('seek', ms)
+}
+
+function handleMouseMove(event: MouseEvent) {
+  const svg = event.currentTarget as SVGElement
+  const rect = svg.getBoundingClientRect()
+  hoverX.value = ((event.clientX - rect.left) / rect.width) * width
+}
+
+function handleMouseLeave() {
+  hoverX.value = null
+}
 </script>
 
 <template>
   <div class="relative w-full">
-    <svg :viewBox="`0 0 ${width} ${height}`" class="w-full h-auto rounded-lg border border-default">
+    <svg 
+      :viewBox="`0 0 ${width} ${height}`" 
+      class="w-full h-auto rounded-lg border border-default cursor-pointer"
+      @click="handleClick"
+      @mousemove="handleMouseMove"
+      @mouseleave="handleMouseLeave"
+    >
       <rect
         v-for="(b, idx) in blocks"
         :key="idx"
@@ -79,6 +115,16 @@ const targetY = computed(() => {
         stroke-width="2"
       />
       <line
+        v-if="hoverX !== null && hoverX !== playheadX"
+        :x1="hoverX"
+        :x2="hoverX"
+        :y1="padding"
+        :y2="height - padding"
+        stroke="#94a3b8"
+        stroke-width="1"
+        stroke-dasharray="2 2"
+      />
+      <line
         :x1="padding"
         :x2="width - padding"
         :y1="targetY"
@@ -88,6 +134,17 @@ const targetY = computed(() => {
         stroke-width="1"
       />
     </svg>
+    <div 
+      v-if="hoverTime !== null" 
+      class="absolute bg-background border border-default rounded px-2 py-1 text-xs font-medium shadow-lg pointer-events-none"
+      :style="{ 
+        left: `${((hoverX ?? 0) / width) * 100}%`, 
+        top: '-30px',
+        transform: 'translateX(-50%)'
+      }"
+    >
+      {{ hoverTime }}
+    </div>
     <div class="absolute top-2 right-2">
       <UPopover>
         <UButton

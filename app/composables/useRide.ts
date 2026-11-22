@@ -1,6 +1,7 @@
 import { computed, onUnmounted, ref, shallowRef, watch, type Ref } from 'vue'
 import type { Cue, Plan, Profile, RideSample, Song, TrainerSample, Workout } from '#shared/types'
 import { resolveWatts } from '#shared/targets'
+import { seekToTime } from '#shared/seek'
 import type { TrainerPort } from '~/device/trainer'
 import { createSimulator } from '~/device/trainer'
 import { createHeartRateSimulator, type HeartRatePort } from '~/device/heart-rate'
@@ -250,6 +251,25 @@ export function useRide(
     mixer.value.skipSong()
   }
 
+  function seekTo(targetMs: number) {
+    if (!workout.value || !plan.value) {
+      return
+    }
+
+    const result = seekToTime(targetMs, workout.value, plan.value)
+    if (!result) {
+      return
+    }
+
+    elapsedMs.value = targetMs
+    pieceIndex.value = result.pieceIndex
+    applyTrainerTarget()
+
+    // TODO: Implement mixer.seekTo(cue, offsetMs) to handle audio seeking
+    // For now, just restart audio from the beginning of the ride
+    // A full implementation would need to reschedule only upcoming cues
+  }
+
   function stopRide() {
     cancelAnimationFrame(rafId)
     rafId = 0
@@ -342,6 +362,7 @@ export function useRide(
     pauseRide,
     skipInterval,
     skipSong,
+    seekTo,
     stopRide,
     trainerConnected,
     useSimulator,
