@@ -81,7 +81,7 @@ const barData = computed(() => {
 
 // Build song lane data
 const songData = computed(() => {
-  if (!props.plan || !props.songs) return []
+  if (!props.plan?.cues || !props.songs) return []
 
   let accumulatedTime = 0
   return props.plan.cues.map((cue) => {

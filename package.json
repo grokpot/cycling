@@ -13,7 +13,7 @@
   "dependencies": {
     "@nuxt/ui": "^4.13.0",
     "echarts": "^6.1.0",
-    "nuxt": "npm:nuxt-nightly@5x",
+    "nuxt": "npm:nuxt-nightly@latest",
     "soundtouchjs": "^0.3.0",
     "tailwindcss": "^4.3.5",
     "vue": "^3.5.43",

@@ -220,7 +220,7 @@ async function startRide() {
     <div class="flex-1 overflow-y-auto">
       <div class="p-4 max-w-4xl mx-auto space-y-6 pb-24">
         <!-- Workout visualization -->
-        <WorkoutEChartsGraph :workout="workout" :profile="profile" :intensity-scale="intensityScale" :plan="plan.cues.length > 0 ? plan : undefined" :songs="songs" />
+        <WorkoutEChartsGraph :workout="workout" :profile="profile" :intensity-scale="intensityScale" :plan="plan?.cues?.length ? plan : undefined" :songs="songs" />
 
         <!-- Workout stats -->
         <UCard>
