@@ -173,8 +173,8 @@ watch(controlOpen, (open) => {
 </script>
 
 <template>
-  <div v-if="workout && plan && profile" class="h-dvh flex flex-col p-3 max-w-2xl mx-auto overflow-hidden">
-    <header class="flex items-center justify-between gap-2 flex-shrink-0">
+  <div v-if="workout && plan && profile" class="h-dvh flex flex-col p-4 max-w-4xl mx-auto overflow-hidden">
+    <header class="flex items-center justify-between gap-3 flex-shrink-0 mb-4">
       <UButton
         icon="i-lucide-arrow-left"
         variant="ghost"
@@ -182,10 +182,10 @@ watch(controlOpen, (open) => {
         aria-label="Leave ride"
         @click="leaveRide"
       />
-      <h1 class="text-body font-medium truncate flex-1 text-center">
+      <h1 class="text-lg font-semibold truncate flex-1 text-center">
         {{ workout.name }}
       </h1>
-      <div class="flex gap-1">
+      <div class="flex gap-2">
         <UButton
           icon="i-lucide-bluetooth"
           variant="soft"
@@ -201,7 +201,7 @@ watch(controlOpen, (open) => {
       </div>
     </header>
 
-    <div class="grid grid-cols-2 gap-2 flex-shrink-0 mt-3">
+    <div class="grid grid-cols-2 gap-3 flex-shrink-0">
       <RideMetricCard
         title="Power"
         :value="ride.sample.value.watts"
@@ -232,7 +232,7 @@ watch(controlOpen, (open) => {
       />
     </div>
 
-    <div class="flex-1 min-h-0 overflow-y-auto space-y-3 mt-3">
+    <div class="flex-1 min-h-0 overflow-y-auto space-y-4 mt-4">
       <WorkoutEChartsGraph
         :workout="workout"
         :profile="profile"
@@ -251,7 +251,7 @@ watch(controlOpen, (open) => {
       />
     </div>
     
-    <div class="flex items-center justify-between gap-2 pt-3 flex-shrink-0">
+    <div class="flex items-center justify-between gap-4 pt-4 flex-shrink-0">
       <UButton
         label="Skip"
         variant="soft"
